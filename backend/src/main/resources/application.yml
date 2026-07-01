@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    url: ${NEON_DB_URL}
+    username: ${NEON_DB_USER}
+    password: ${NEON_DB_PASSWORD}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true # Good for existing databases, starts migration from version 1 needed to fix one error
+
+  # JPA / Hibernate Configuration
+  jpa:
+    hibernate:
+      # CRITICAL: Tells Hibernate NOT to automatically create/alter tables.
+      # 'validate' ensures your Java entities match your Flyway tables.
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      # Change the base path from /actuator to something else (Optional)
+      base-path: /actuator
+      exposure:
+        # Choose which endpoints to expose over HTTP.
+        # Use '*' to expose ALL endpoints (Great for development, secure it in production!)
+        include: "health,info,metrics,env"
+
+        # Or exclude specific ones if you used '*'
+        exclude: "env"
+
+  endpoint:
+    health:
+      # Show full details (components, disk space, db status) instead of just {"status": "UP"}
+      # Options: never, always, when_authorized
+      show-details: always
