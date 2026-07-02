@@ -1,21 +1,50 @@
-import { Button } from "@/components/ui/button"
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ProtectedRoute } from './routes/ProtectedRoute';
+import { AppLayout } from './components/layout/AppLayout';
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import { AuthProvider } from './context/AuthContext';
+import { Toaster } from './components/ui/sonner';
+
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />
+  },
+  {
+    path: '/',
+    element: <AppLayout />,
+    children: [
+      {
+        path: '',
+        element: <ProtectedRoute />,
+        children: [
+          {
+            index: true,
+            element: (
+              <div className="p-12 font-['Geist']">
+                <h1 className="text-4xl font-bold mb-4 font-['Bricolage_Grotesque']">Dashboard</h1>
+                <p className="text-gray-400">Welcome to Caption Roulette! This is a protected route.</p>
+              </div>
+            )
+          }
+        ]
+      }
+    ]
+  }
+]);
 
 export function App() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
-  )
+    <AuthProvider>
+      <RouterProvider router={router} />
+      <Toaster theme="dark" />
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
