@@ -2,6 +2,7 @@ import { Aperture, User as UserIcon, LogOut, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
 import { Link } from 'react-router-dom';
+import { ImageUploadDrawer } from '../ImageUploadDrawer';
 
 export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -20,7 +21,8 @@ export function Navbar() {
               <UserIcon className="w-4 h-4" />
               <span>{user?.username}</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/10 hover:text-white rounded-full">
+            <ImageUploadDrawer />
+            <Button variant="destructive" size="icon" onClick={logout} className="hover:bg-white/10 hover:text-white rounded-full">
               <LogOut className="w-4 h-4" />
               <span className="sr-only">Log out</span>
             </Button>

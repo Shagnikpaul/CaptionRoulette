@@ -18,6 +18,13 @@ jwt:
   secret: ${JWT_SECRET}
   expiration-ms: 86400000 # 24 hours in milliseconds
 
+aws:
+  access_key: ${AWS_ACCESS_KEY}
+  secret_key: ${AWS_SECRET_KEY}
+  region: ${AWS_REGION}
+  s3_bucket: ${S3_BUCKET}
+
+
 management:
   endpoints:
     web:
