@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,6 +32,16 @@ public class GlobalExceptionHandler {
                 err -> errors.put(err.getField(), err.getDefaultMessage())
         );
         return buildResponse(HttpStatus.BAD_REQUEST, "Validation failed", errors);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        String message = String.format(
+                "HTTP method '%s' is not supported for this endpoint. Supported methods: %s",
+                ex.getMethod(),
+                ex.getSupportedHttpMethods()
+        );
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, message, null);
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
@@ -67,6 +78,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
         log.error("Unhandled exception: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", null);
+    }
+    @ExceptionHandler(InvalidImageKeyException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidImageKey(InvalidImageKeyException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(TagLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleTagLimitExceeded(TagLimitExceededException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message, Object details) {
