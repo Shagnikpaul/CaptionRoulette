@@ -8,6 +8,7 @@ import org.shagnik.backend.entity.PostStatus;
 import org.shagnik.backend.entity.Tag;
 import org.shagnik.backend.entity.User;
 import org.shagnik.backend.exception.InvalidImageKeyException;
+import org.shagnik.backend.exception.PostNotFoundException;
 import org.shagnik.backend.exception.TagLimitExceededException;
 import org.shagnik.backend.repository.PostRepository;
 import org.shagnik.backend.repository.TagRepository;
@@ -39,7 +40,7 @@ public class PostService {
     private String bucketName;
 
     public PostService(PostRepository postRepository, TagRepository tagRepository,
-                       AuthService authService, S3Client s3Client) {
+            AuthService authService, S3Client s3Client) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
         this.authService = authService;
@@ -126,6 +127,13 @@ public class PostService {
                 .map(this::toFeedItemResponse);
     }
 
+    @Transactional(readOnly = true)
+    public PostResponse getPostById(UUID id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new PostNotFoundException(id.toString()));
+        return toPostResponse(post);
+    }
+
     private PostResponse toPostResponse(Post post) {
         List<String> tagNames = post.getTags().stream()
                 .map(Tag::getName)
@@ -135,8 +143,7 @@ public class PostService {
                 post.getId(), post.getPoster().getId(), post.getPoster().getUsername(),
                 post.getImageKey(), post.getTitle(), post.getStatus(),
                 post.getCreatedAt(), post.getLockAt(), post.getSettledAt(),
-                post.getWinningCaptionId(), tagNames
-        );
+                post.getWinningCaptionId(), tagNames);
     }
 
     private FeedItemResponse toFeedItemResponse(Post post) {
@@ -147,7 +154,6 @@ public class PostService {
         return new FeedItemResponse(
                 post.getId(), post.getPoster().getUsername(), post.getImageKey(),
                 post.getTitle(), post.getStatus(), post.getCreatedAt(), post.getLockAt(),
-                post.getSettledAt(), post.getWinningCaptionId(), tagNames
-        );
+                post.getSettledAt(), post.getWinningCaptionId(), tagNames);
     }
 }

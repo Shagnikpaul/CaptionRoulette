@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
@@ -25,7 +27,7 @@ public class PostController {
 
     @PostMapping
     public ResponseEntity<PostResponse> createPost(Authentication authentication,
-                                                   @Valid @RequestBody CreatePostRequest request) {
+            @Valid @RequestBody CreatePostRequest request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -47,5 +49,11 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(postService.getSettledFeed(pageable));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PostResponse> getPostById(@PathVariable UUID id) {
+        PostResponse response = postService.getPostById(id);
+        return ResponseEntity.ok(response);
     }
 }

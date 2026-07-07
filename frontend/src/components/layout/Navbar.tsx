@@ -8,9 +8,12 @@ export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
 
   return (
-    <nav className="w-full sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/85 backdrop-blur-md text-white">
+    <div className='sticky top-4 z-50 px-4'>
+
+    
+    <nav className="mx-auto flex items-center justify-between px-6 py-4 border border-white/10 bg-black/70 rounded-2xl backdrop-blur-md text-white">
       {/* Logo + Feed Nav */}
-      <div className="flex items-center gap-5">
+      <div className="flex w-full items-center gap-5">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <Aperture className="w-6 h-6" />
           <span className="font-bold text-lg tracking-tight font-['Bricolage_Grotesque']">
@@ -19,7 +22,7 @@ export function Navbar() {
         </Link>
 
         {/* Feed navigation icon buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-center w-full gap-1">
           <NavLink
             to="/"
             end
@@ -83,5 +86,6 @@ export function Navbar() {
         )}
       </div>
     </nav>
+    </div>
   );
 }

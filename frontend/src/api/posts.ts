@@ -101,3 +101,50 @@ export async function getSettledPosts(
   );
   return response.data;
 }
+
+
+export interface CaptionRequest {
+  text: string;
+}
+
+export interface CaptionResponse {
+  id: string;
+  text: string;
+  authorUsername: string;
+  createdAt: string;
+}
+
+export async function getPostById(id: string) {
+  const response = await client.get<PostResponse>(`/api/posts/${id}`);
+  return response.data;
+}
+
+/**
+ * Fetches captions for a post (paginated, sorted by top/new/old).
+ */
+export async function getCaptions(
+  postId: string,
+  sort = 'new',
+  page = 0,
+  size = 10
+): Promise<PagedResponse<CaptionResponse>> {
+  const response = await client.get<PagedResponse<CaptionResponse>>(
+    `/api/posts/${postId}/captions`,
+    { params: { sort, page, size } }
+  );
+  return response.data;
+}
+
+/**
+ * Submits a caption for a post.
+ */
+export async function submitCaption(
+  postId: string,
+  payload: CaptionRequest
+): Promise<CaptionResponse> {
+  const response = await client.post<CaptionResponse>(
+    `/api/posts/${postId}/captions`,
+    payload
+  );
+  return response.data;
+}

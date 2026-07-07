@@ -7,6 +7,7 @@ import { HomePage } from './pages/HomePage';
 import { SettledPage } from './pages/SettledPage';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from './components/ui/sonner';
+import PostDetailsPage from './pages/PostDetailsPage';
 
 const router = createBrowserRouter([
   {
@@ -32,7 +33,11 @@ const router = createBrowserRouter([
           {
             path: 'settled',
             element: <SettledPage />
-          }
+          },
+          {
+            path: 'posts/:postId', 
+            element: <PostDetailsPage />
+          },
         ]
       }
     ]

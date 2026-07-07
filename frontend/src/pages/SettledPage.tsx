@@ -4,7 +4,6 @@ import {
     ImageOff,
     ChevronLeft,
     ChevronRight,
-    MessageSquareQuote,
 } from "lucide-react";
 import { getSettledPosts, getImageUrl, type FeedItemResponse } from "@/api/posts";
 import { Button } from "@/components/ui/button";
@@ -34,72 +33,65 @@ function SettledCard({ post }: { post: FeedItemResponse }) {
     const [imgError, setImgError] = useState(false);
 
     return (
-        <article className="flex flex-col border border-white/10 bg-white/[0.03] rounded-xl overflow-hidden">
-            {/* ── Header row ── */}
-            <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500/40 to-amber-600/40 border border-white/10 text-xs font-bold text-white uppercase">
+        <article className="relative rounded-2xl overflow-hidden border border-white/10 bg-black group">
+            {/* ── Full-bleed background image ── */}
+            {!imgError ? (
+                <img
+                    src={getImageUrl(post.imageKey)}
+                    alt={post.title ?? "Post image"}
+                    className="w-full h-auto object-cover max-h-[560px] transition-transform duration-500 group-hover:scale-[1.02]"
+                    onError={() => setImgError(true)}
+                />
+            ) : (
+                <div className="flex h-72 items-center justify-center bg-white/5 text-white/20">
+                    <ImageOff className="size-12" />
+                </div>
+            )}
+
+            {/* Gradient scrim — heavier at top & bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
+
+            {/* ── TOP: poster pill (left) + settled-time pill (right) ── */}
+            <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
+                {/* Poster pill */}
+                <div className="flex items-center gap-2 rounded-full bg-black/25 backdrop-blur-md border border-white/15 pl-1 pr-3 py-1">
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500/60 to-amber-600/60 text-[10px] font-bold text-white uppercase">
                         {post.posterUsername.charAt(0)}
                     </div>
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-xs font-semibold text-white leading-none">
                         {post.posterUsername}
                     </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-yellow-400/80">
-                    <Trophy className="size-3" />
-                    Settled {timeAgo(post.settledAt)}
+
+                {/* Settled time pill */}
+                <div className="flex items-center gap-1.5 rounded-full bg-black/25 backdrop-blur-md border border-yellow-500/25 px-2.5 py-1">
+                    <Trophy className="size-3 text-yellow-400" />
+                    <span className="text-[10px] font-semibold text-yellow-400">
+                        Settled {timeAgo(post.settledAt)}
+                    </span>
                 </div>
             </div>
 
-            {/* ── Image ── */}
-            <div className="relative bg-white/5 w-full">
-                {!imgError ? (
-                    <img
-                        src={getImageUrl(post.imageKey)}
-                        alt={post.title ?? "Post image"}
-                        className="w-full object-cover max-h-[700px]"
-                        onError={() => setImgError(true)}
-                    />
-                ) : (
-                    <div className="flex h-64 items-center justify-center text-white/20">
-                        <ImageOff className="size-12" />
-                    </div>
-                )}
-            </div>
-
-            {/* ── Footer ── */}
-            <div className="flex flex-col gap-2.5 px-4 py-3">
-                {/* Title */}
-                {post.title && (
-                    <p className="text-sm font-semibold text-white leading-snug">
-                        {post.title}
-                    </p>
-                )}
-
-                {/* Winning caption block */}
-                <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5 flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-yellow-400/70 uppercase tracking-wider">
-                        <Trophy className="size-3" />
+            {/* ── BOTTOM: winning caption pill + tag pills ── */}
+            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 pointer-events-none">
+                {/* Winning caption pill */}
+                <div className="flex flex-col gap-0.5 rounded-xl bg-black/30 backdrop-blur-md border border-yellow-500/20 px-3 py-2 max-w-[70%]">
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-yellow-400/80 uppercase tracking-wider">
+                        <Trophy className="size-2.5" />
                         Winning Caption
                     </div>
-                    <p className="text-xs text-white/60 italic leading-relaxed">
-                        {post.winningCaptionId
-                            ? "Caption text coming soon…"
-                            : "No winner determined yet"}
+                    <p className="text-[11px] text-white/70 italic leading-snug line-clamp-2">
+                        {post.winningCaptionId ? "Caption text coming soon…" : "No winner yet"}
                     </p>
-                    <div className="flex items-center gap-1 text-[10px] text-white/35">
-                        <MessageSquareQuote className="size-3" />
-                        <span>{post.winningCaptionId ? "Winner TBD" : "—"}</span>
-                    </div>
                 </div>
 
-                {/* Tags */}
+                {/* Tag pills */}
                 {post.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                        {post.tags.map((tag) => (
+                    <div className="flex flex-wrap justify-end gap-1 shrink-0">
+                        {post.tags.slice(0, 3).map((tag) => (
                             <span
                                 key={tag}
-                                className="text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                                className="rounded-full bg-black/25 backdrop-blur-md border border-white/15 px-2 py-0.5 text-[10px] font-medium text-yellow-300/80"
                             >
                                 #{tag}
                             </span>
@@ -115,15 +107,17 @@ function SettledCard({ post }: { post: FeedItemResponse }) {
 
 function SkeletonCard() {
     return (
-        <div className="flex flex-col rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden animate-pulse">
-            <div className="flex items-center gap-2.5 px-4 py-3">
-                <div className="size-8 rounded-full bg-white/10" />
-                <div className="h-3 w-24 rounded-full bg-white/10" />
-            </div>
+        <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden animate-pulse">
             <div className="h-72 bg-white/10" />
-            <div className="flex flex-col gap-2 px-4 py-3">
-                <div className="h-14 rounded-lg bg-white/10" />
-                <div className="h-3 w-32 rounded-full bg-white/10" />
+            {/* top pills */}
+            <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
+                <div className="h-7 w-28 rounded-full bg-white/10" />
+                <div className="h-6 w-28 rounded-full bg-white/10" />
+            </div>
+            {/* bottom pills */}
+            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+                <div className="h-14 w-48 rounded-xl bg-white/10" />
+                <div className="h-5 w-16 rounded-full bg-white/10" />
             </div>
         </div>
     );
