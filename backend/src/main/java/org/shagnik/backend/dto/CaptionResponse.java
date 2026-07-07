@@ -16,6 +16,6 @@ public class CaptionResponse {
     private String text;
     private String authorUsername;
     private LocalDateTime createdAt;
-
-    // Score field intentionally omitted — arrives Day 6 with voting
+    private int score;
+    private Integer myVote;
 }

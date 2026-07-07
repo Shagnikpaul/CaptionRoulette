@@ -11,14 +11,18 @@ import org.shagnik.backend.exception.*;
 import org.shagnik.backend.repository.CaptionRepository;
 import org.shagnik.backend.repository.PostRepository;
 import org.shagnik.backend.repository.UserRepository;
+import org.shagnik.backend.repository.VoteRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -28,6 +32,8 @@ public class CaptionService {
     private final CaptionRepository captionRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final VoteRepository voteRepository;
+    private final AuthService authService;
 
     @Transactional
     public CaptionResponse submitCaption(UUID postId, CaptionRequest request, String username) {
@@ -69,31 +75,59 @@ public class CaptionService {
             throw new DuplicateResourceException("You have already submitted a caption for this post");
         }
 
-        return toResponse(caption);
+        // Brand-new caption — no votes exist yet, so score is 0 and myVote is null
+        return toResponse(caption, 0, null);
     }
 
-    public Page<CaptionResponse> getCaptions(UUID postId, String sort, int page, int size) {
+    public Page<CaptionResponse> getCaptions(UUID postId, String sort, int page, int size, Authentication authentication) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
 
-        Sort sortOrder = switch (sort == null ? "new" : sort.toLowerCase()) {
-            case "old" -> Sort.by(Sort.Direction.ASC, "createdAt");
-            // "top" temporarily falls back to newest-first until scoring exists (Day 6)
-            case "top", "new" -> Sort.by(Sort.Direction.DESC, "createdAt");
+        String normalizedSort = sort == null ? "new" : sort.toLowerCase();
+
+        Page<Caption> captionsPage = switch (normalizedSort) {
+            case "old" -> captionRepository.findByPost(post,
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt")));
+            case "new" -> captionRepository.findByPost(post,
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+            case "top" -> captionRepository.findByPostIdOrderByScoreDescThenOldest(postId,
+                    PageRequest.of(page, size)); // no Sort here — ORDER BY is baked into the query
             default -> throw new InvalidRequestException("Invalid sort mode: " + sort);
         };
 
-        Pageable pageable = PageRequest.of(page, size, sortOrder);
-        return captionRepository.findByPost(post, pageable)
-                .map(this::toResponse);
+        List<UUID> captionIds = captionsPage.getContent().stream().map(Caption::getId).toList();
+
+        // Bulk net scores
+        Map<UUID, Integer> scores = new HashMap<>();
+        if (!captionIds.isEmpty()) {
+            voteRepository.getScoresForCaptions(captionIds)
+                    .forEach(p -> scores.put(p.getCaptionId(), p.getScore().intValue()));
+        }
+
+        // Bulk "my vote" — only if authenticated
+        Map<UUID, Integer> myVotes = new HashMap<>();
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal()) && !captionIds.isEmpty()) {
+            User currentUser = authService.getCurrentUser(authentication.getName());
+            voteRepository.findByCaptionIdInAndUserId(captionIds, currentUser.getId())
+                    .forEach(v -> myVotes.put(v.getCaption().getId(), v.getValue().intValue()));
+        }
+
+        return captionsPage.map(c -> toResponse(
+                c,
+                scores.getOrDefault(c.getId(), 0),
+                myVotes.get(c.getId())
+        ));
     }
 
-    private CaptionResponse toResponse(Caption caption) {
+    private CaptionResponse toResponse(Caption caption, int score, Integer myVote) {
         return new CaptionResponse(
                 caption.getId(),
                 caption.getText(),
                 caption.getAuthor().getUsername(),
-                caption.getCreatedAt()
+                caption.getCreatedAt(),
+                score,
+                myVote
         );
     }
 }

@@ -6,6 +6,7 @@ import {
     getImageUrl,
     getCaptions,
     submitCaption,
+    voteOnCaption,
     type PostResponse,
     type CaptionResponse,
     type PagedResponse
@@ -23,7 +24,9 @@ import {
     MessageSquareQuote,
     Loader2,
     Send,
-    User
+    User,
+    ThumbsUp,
+    ThumbsDown
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,6 +88,9 @@ function PostDetailsPage() {
 
     const [captionText, setCaptionText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Track in-flight vote requests to prevent race conditions
+    const [votingCaptionIds, setVotingCaptionIds] = useState<Set<string>>(new Set());
 
     // Fetch handlers
     const fetchPost = useCallback(async (id: string) => {
@@ -184,6 +190,82 @@ function PostDetailsPage() {
         }
     };
 
+    // ── Vote handler with optimistic update + rollback ────────────────────────
+    const handleVote = async (caption: CaptionResponse, value: 1 | -1 | 0) => {
+        if (!captionsData) return;
+        if (votingCaptionIds.has(caption.id)) return;
+
+        // Snapshot for rollback
+        const previousContent = captionsData.content;
+
+        // Compute optimistic state
+        const prevVote = caption.myVote;
+        const prevScore = caption.score;
+
+        let newMyVote: 1 | -1 | null;
+        let scoreDelta = 0;
+
+        if (value === 0) {
+            // Explicit remove
+            newMyVote = null;
+            scoreDelta = prevVote ? -prevVote : 0;
+        } else if (prevVote === value) {
+            // Clicking same button → toggle off
+            newMyVote = null;
+            scoreDelta = -value;
+            value = 0; // send 0 to API
+        } else {
+            // New vote or switching direction
+            newMyVote = value;
+            scoreDelta = prevVote ? value - prevVote : value;
+        }
+
+        // Apply optimistic update
+        setCaptionsData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                content: prev.content.map(c =>
+                    c.id === caption.id
+                        ? { ...c, score: prevScore + scoreDelta, myVote: newMyVote }
+                        : c
+                )
+            };
+        });
+
+        setVotingCaptionIds(prev => new Set(prev).add(caption.id));
+
+        try {
+            const result = await voteOnCaption(caption.id, { value });
+            // Sync with server truth
+            setCaptionsData(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    content: prev.content.map(c =>
+                        c.id === caption.id
+                            ? { ...c, score: result.netScore, myVote: result.myVote }
+                            : c
+                    )
+                };
+            });
+        } catch (err) {
+            // Rollback on failure
+            setCaptionsData(prev => {
+                if (!prev) return prev;
+                return { ...prev, content: previousContent };
+            });
+            const parsed = parseApiError(err);
+            toast.error('Failed to submit vote', { description: parsed.message });
+        } finally {
+            setVotingCaptionIds(prev => {
+                const next = new Set(prev);
+                next.delete(caption.id);
+                return next;
+            });
+        }
+    };
+
     if (isLoadingPost) {
         return (
             <div className="flex-1 flex items-center justify-center py-24 bg-black text-white">
@@ -212,6 +294,17 @@ function PostDetailsPage() {
     const isSettled = post.status === 'SETTLED';
     const shouldDisableForm = isPoster || isSettled || userHasSubmitted;
     const urgencyClass = getUrgencyClass(post.lockAt);
+
+    // A caption cannot be voted on if:
+    // - user is not logged in
+    // - post is settled
+    // - user is the caption's author
+    const canVoteOnCaption = (caption: CaptionResponse): boolean => {
+        if (!user) return false;
+        if (isSettled) return false;
+        if (caption.authorUsername === user.username) return false;
+        return true;
+    };
 
     return (
         <div className="flex flex-col w-full min-h-screen bg-black text-white">
@@ -246,7 +339,7 @@ function PostDetailsPage() {
                         )}
 
                         {/* Blurry Glass Card showing post details. Fades out on image wrapper hover. */}
-                        <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-lg border border-white/10 rounded-xl p-4 transition-all duration-300 ease-in-out opacity-100 transform translate-y-0 group-hover:opacity-0 group-hover:translate-y-2 group-hover:pointer-events-none">
+                        <div className="absolute bottom-4 left-4 right-4 bg-black/10 backdrop-blur-xs border border-white/10 rounded-xl p-4 transition-all duration-300 ease-in-out opacity-100 transform translate-y-0 group-hover:opacity-0 group-hover:translate-y-2 group-hover:pointer-events-none">
                             {post.title && (
                                 <h2 className="text-base font-bold text-white mb-2 leading-snug">
                                     {post.title}
@@ -435,6 +528,9 @@ function PostDetailsPage() {
                             ) : (
                                 captionsData.content.map((caption) => {
                                     const isWinner = post.winningCaptionId === caption.id;
+                                    const isAuthor = caption.authorUsername === user?.username;
+                                    const voteAllowed = canVoteOnCaption(caption);
+                                    const isVoting = votingCaptionIds.has(caption.id);
                                     return (
                                         <div
                                             key={caption.id}
@@ -444,37 +540,88 @@ function PostDetailsPage() {
                                                     : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.02]'
                                             }`}
                                         >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white uppercase border ${
-                                                        isWinner
-                                                            ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-400/20'
-                                                            : 'bg-gradient-to-br from-orange-500/20 to-pink-500/20 border-white/5'
+                                            <div className="flex items-start gap-3">
+                                                {/* ── Vote column ── */}
+                                                <div className="flex flex-col items-center gap-1 pt-0.5 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        title={!voteAllowed ? (isSettled ? 'Voting closed' : isAuthor ? 'Cannot vote on your own caption' : 'Log in to vote') : 'Upvote'}
+                                                        disabled={!voteAllowed || isVoting}
+                                                        onClick={() => handleVote(caption, 1)}
+                                                        className={`group flex items-center justify-center size-6 rounded-md transition-all ${
+                                                            caption.myVote === 1
+                                                                ? 'text-orange-400 bg-orange-500/15'
+                                                                : voteAllowed
+                                                                ? 'text-white/25 hover:text-orange-400 hover:bg-orange-500/10'
+                                                                : 'text-white/10 cursor-not-allowed'
+                                                        }`}
+                                                    >
+                                                        <ThumbsUp className="size-3.5" />
+                                                    </button>
+
+                                                    {/* Score */}
+                                                    <span className={`text-[11px] font-bold tabular-nums leading-none ${
+                                                        caption.score > 0
+                                                            ? 'text-orange-400'
+                                                            : caption.score < 0
+                                                            ? 'text-red-400'
+                                                            : 'text-white/30'
                                                     }`}>
-                                                        {caption.authorUsername.charAt(0)}
-                                                    </div>
-                                                    <span className={`text-xs font-semibold ${isWinner ? 'text-yellow-400' : 'text-white'}`}>
-                                                        {caption.authorUsername}
+                                                        {caption.score > 0 ? `+${caption.score}` : caption.score}
                                                     </span>
-                                                    {caption.authorUsername === user?.username && (
-                                                        <span className="text-[9px] bg-white/10 text-white/70 px-1 rounded">You</span>
+
+                                                    <button
+                                                        type="button"
+                                                        title={!voteAllowed ? (isSettled ? 'Voting closed' : isAuthor ? 'Cannot vote on your own caption' : 'Log in to vote') : 'Downvote'}
+                                                        disabled={!voteAllowed || isVoting}
+                                                        onClick={() => handleVote(caption, -1)}
+                                                        className={`group flex items-center justify-center size-6 rounded-md transition-all ${
+                                                            caption.myVote === -1
+                                                                ? 'text-red-400 bg-red-500/15'
+                                                                : voteAllowed
+                                                                ? 'text-white/25 hover:text-red-400 hover:bg-red-500/10'
+                                                                : 'text-white/10 cursor-not-allowed'
+                                                        }`}
+                                                    >
+                                                        <ThumbsDown className="size-3.5" />
+                                                    </button>
+                                                </div>
+
+                                                {/* ── Caption content ── */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white uppercase border ${
+                                                                isWinner
+                                                                    ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-400/20'
+                                                                    : 'bg-gradient-to-br from-orange-500/20 to-pink-500/20 border-white/5'
+                                                            }`}>
+                                                                {caption.authorUsername.charAt(0)}
+                                                            </div>
+                                                            <span className={`text-xs font-semibold ${isWinner ? 'text-yellow-400' : 'text-white'}`}>
+                                                                {caption.authorUsername}
+                                                            </span>
+                                                            {isAuthor && (
+                                                                <span className="text-[9px] bg-white/10 text-white/70 px-1 rounded">You</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[10px] text-white/30 font-medium">
+                                                            {timeAgo(caption.createdAt)}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-sm text-white/80 leading-relaxed font-sans select-text">
+                                                        {caption.text}
+                                                    </p>
+
+                                                    {isWinner && (
+                                                        <div className="flex items-center gap-1.5 mt-2.5 text-[9px] font-bold text-yellow-400 uppercase tracking-wider">
+                                                            <Trophy className="size-3" />
+                                                            <span>Winning Caption</span>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <span className="text-[10px] text-white/30 font-medium">
-                                                    {timeAgo(caption.createdAt)}
-                                                </span>
                                             </div>
-
-                                            <p className="text-sm text-white/80 leading-relaxed font-sans select-text">
-                                                {caption.text}
-                                            </p>
-
-                                            {isWinner && (
-                                                <div className="flex items-center gap-1.5 mt-2.5 text-[9px] font-bold text-yellow-400 uppercase tracking-wider">
-                                                    <Trophy className="size-3" />
-                                                    <span>Winning Caption</span>
-                                                </div>
-                                            )}
                                         </div>
                                     );
                                 })

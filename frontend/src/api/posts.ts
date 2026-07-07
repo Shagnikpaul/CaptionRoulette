@@ -112,6 +112,21 @@ export interface CaptionResponse {
   text: string;
   authorUsername: string;
   createdAt: string;
+  /** Net vote score (SUM of all votes). Always present, never null. */
+  score: number;
+  /** The authenticated caller's current vote: 1, -1, or null (not voted / not logged in). */
+  myVote: 1 | -1 | null;
+}
+
+export interface VoteRequest {
+  /** 1 = upvote, -1 = downvote, 0 = remove existing vote */
+  value: 1 | -1 | 0;
+}
+
+export interface VoteResponse {
+  captionId: string;
+  netScore: number;
+  myVote: 1 | -1 | null;
 }
 
 export async function getPostById(id: string) {
@@ -144,6 +159,21 @@ export async function submitCaption(
 ): Promise<CaptionResponse> {
   const response = await client.post<CaptionResponse>(
     `/api/posts/${postId}/captions`,
+    payload
+  );
+  return response.data;
+}
+
+/**
+ * Casts, changes, or removes a vote on a caption.
+ * value: 1 = upvote | -1 = downvote | 0 = remove vote
+ */
+export async function voteOnCaption(
+  captionId: string,
+  payload: VoteRequest
+): Promise<VoteResponse> {
+  const response = await client.post<VoteResponse>(
+    `/api/captions/${captionId}/vote`,
     payload
   );
   return response.data;

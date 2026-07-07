@@ -6,20 +6,29 @@ import org.shagnik.backend.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
 
 public interface CaptionRepository extends JpaRepository<Caption, UUID> {
 
-    // Fetch all captions for a post, paginated — used for "new"/"old" sort
-    // (Pageable's Sort handles direction, so no separate method needed for asc/desc)
     Page<Caption> findByPost(Post post, Pageable pageable);
 
-    // Used by the service to enforce "one caption per user per post" (FR8)
     boolean existsByPostAndAuthor(Post post, User author);
 
-    // Convenience overload if you ever just want IDs instead of loaded entities
     Page<Caption> findByPostId(UUID postId, Pageable pageable);
 
     boolean existsByPostIdAndAuthorId(UUID postId, UUID authorId);
+
+    // "top" sort: net score DESC, tie-break oldest caption first.
+    // Pass a Pageable with NO Sort (e.g. PageRequest.of(page, size)) — ordering is baked into the query.
+    @Query(
+            value = "SELECT c FROM Caption c LEFT JOIN Vote v ON v.caption = c " +
+                    "WHERE c.post.id = :postId " +
+                    "GROUP BY c " +
+                    "ORDER BY COALESCE(SUM(v.value), 0) DESC, c.createdAt ASC",
+            countQuery = "SELECT COUNT(c) FROM Caption c WHERE c.post.id = :postId"
+    )
+    Page<Caption> findByPostIdOrderByScoreDescThenOldest(@Param("postId") UUID postId, Pageable pageable);
 }

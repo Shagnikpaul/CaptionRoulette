@@ -8,6 +8,7 @@ import org.shagnik.backend.service.CaptionService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -38,9 +39,10 @@ public class CaptionController {
             @PathVariable UUID postId,
             @RequestParam(defaultValue = "new") String sort,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
     ) {
-        Page<CaptionResponse> captions = captionService.getCaptions(postId, sort, page, size);
+        Page<CaptionResponse> captions = captionService.getCaptions(postId, sort, page, size, authentication);
         return ResponseEntity.ok(captions);
     }
 }
