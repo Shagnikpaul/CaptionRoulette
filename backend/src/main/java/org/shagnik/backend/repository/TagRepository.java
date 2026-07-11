@@ -14,4 +14,6 @@ public interface TagRepository extends JpaRepository<Tag, UUID> {
 
     // Batch lookup to avoid N+1 queries when resolving a post's tag list
     List<Tag> findByNameIn(Collection<String> names);
+
+    List<Tag> findTop10ByNameContainingIgnoreCaseOrderByNameAsc(String query);
 }

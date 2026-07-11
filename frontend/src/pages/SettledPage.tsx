@@ -72,14 +72,18 @@ function SettledCard({ post }: { post: FeedItemResponse }) {
                 {/* ── TOP: poster pill (left) + settled-time pill (right) ── */}
                 <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
                     {/* Poster pill */}
-                    <div className="flex items-center gap-2 rounded-full bg-black/25 backdrop-blur-md border border-white/15 pl-1 pr-3 py-1">
-                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500/60 to-amber-600/60 text-[10px] font-bold text-white uppercase">
+                    <Link
+                        to={`/users/${post.posterUsername}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="pointer-events-auto flex items-center gap-2 rounded-full bg-black/25 backdrop-blur-md border border-white/15 pl-1 pr-3 py-1 hover:bg-black/40 transition-colors"
+                    >
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/60 to-pink-600/60 text-[10px] font-bold text-white uppercase">
                             {post.posterUsername.charAt(0)}
                         </div>
                         <span className="text-xs font-semibold text-white leading-none">
                             {post.posterUsername}
                         </span>
-                    </div>
+                    </Link>
 
                     {/* Settled time pill */}
                     <div className="flex items-center gap-1.5 rounded-full bg-black/25 backdrop-blur-md border border-yellow-500/25 px-2.5 py-1">

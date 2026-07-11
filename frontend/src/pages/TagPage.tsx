@@ -1,21 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
+import { useParams, Link } from "react-router-dom";
 import {
-    Clock,
-    Flame,
+    Hash,
     ImageOff,
+    Clock,
     ChevronLeft,
     ChevronRight,
+    AlertCircle,
 } from "lucide-react";
-import { getOpenPosts, getImageUrl, type FeedItemResponse } from "@/api/posts";
+import { getTagPosts } from "@/api/search";
+import { getImageUrl, type FeedItemResponse } from "@/api/posts";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers (copied from HomePage to avoid circular deps) ────────────────────
 
 function getTimeRemaining(lockAt: string): string {
     const diffMs = new Date(lockAt).getTime() - Date.now();
-    if (diffMs < 0) return "Post Settled";
-    if (diffMs == 0) return "Closing soon";
+    if (diffMs <= 0) return "Post Settled";
     const totalMins = Math.floor(diffMs / 60000);
     const hours = Math.floor(totalMins / 60);
     const mins = totalMins % 60;
@@ -45,9 +46,7 @@ function timeAgo(iso: string): string {
     return `${Math.floor(hrs / 24)}d ago`;
 }
 
-
-
-// ─── Post Card ────────────────────────────────────────────────────────────────
+// ─── Post Card (same design as HomePage) ─────────────────────────────────────
 
 function PostCard({ post }: { post: FeedItemResponse }) {
     const [imgError, setImgError] = useState(false);
@@ -56,7 +55,6 @@ function PostCard({ post }: { post: FeedItemResponse }) {
     return (
         <Link to={`/posts/${post.id}`} className="block group">
             <article className="relative rounded-2xl overflow-hidden border border-white/10 bg-black">
-                {/* ── Full-bleed background image ── */}
                 {!imgError ? (
                     <img
                         src={getImageUrl(post.imageKey)}
@@ -70,16 +68,14 @@ function PostCard({ post }: { post: FeedItemResponse }) {
                     </div>
                 )}
 
-                {/* Gradient scrim — top and bottom */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-                {/* ── TOP: poster pill (left) + time-ago pill (right) ── */}
+                {/* TOP row */}
                 <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
-                    {/* Poster pill */}
                     <Link
                         to={`/users/${post.posterUsername}`}
+                        className="flex items-center gap-2 rounded-full bg-black/25 backdrop-blur-md border border-white/15 pl-1 pr-3 py-1 pointer-events-auto hover:bg-black/40 transition-colors"
                         onClick={(e) => e.stopPropagation()}
-                        className="pointer-events-auto flex items-center gap-2 rounded-full bg-black/25 backdrop-blur-md border border-white/15 pl-1 pr-3 py-1 hover:bg-black/40 transition-colors"
                     >
                         <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/60 to-pink-600/60 text-[10px] font-bold text-white uppercase">
                             {post.posterUsername.charAt(0)}
@@ -88,24 +84,19 @@ function PostCard({ post }: { post: FeedItemResponse }) {
                             {post.posterUsername}
                         </span>
                     </Link>
-
-                    {/* Time-ago pill */}
                     <div className="rounded-full bg-black/25 backdrop-blur-md border border-white/15 px-2.5 py-1">
                         <span className="text-[10px] font-medium text-white/60">{timeAgo(post.createdAt)}</span>
                     </div>
                 </div>
 
-                {/* ── BOTTOM: urgency pill + tag pills ── */}
+                {/* BOTTOM row */}
                 <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
-                    {/* Urgency pill */}
                     <div className={`flex items-center gap-1.5 rounded-full bg-black/25 backdrop-blur-md border border-white/15 px-2.5 py-1 text-[11px] font-bold ${urgencyClass}`}>
                         <Clock className="size-3" />
                         <span>{getTimeRemaining(post.lockAt)}</span>
                     </div>
-
-                    {/* Tags */}
                     {post.tags.length > 0 && (
-                        <div className="pointer-events-auto flex flex-wrap justify-end gap-1">
+                        <div className="flex flex-wrap justify-end gap-1 pointer-events-auto">
                             {post.tags.slice(0, 3).map((tag) => (
                                 <Link
                                     key={tag}
@@ -130,12 +121,10 @@ function SkeletonCard() {
     return (
         <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden animate-pulse">
             <div className="h-72 bg-white/10" />
-            {/* top pills */}
             <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
                 <div className="h-7 w-28 rounded-full bg-white/10" />
                 <div className="h-6 w-14 rounded-full bg-white/10" />
             </div>
-            {/* bottom pills */}
             <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                 <div className="h-6 w-32 rounded-full bg-white/10" />
                 <div className="h-5 w-20 rounded-full bg-white/10" />
@@ -144,11 +133,24 @@ function SkeletonCard() {
     );
 }
 
+// ─── Header Skeleton ──────────────────────────────────────────────────────────
+
+function HeaderSkeleton() {
+    return (
+        <div className="animate-pulse flex flex-col gap-3 mb-8">
+            <div className="h-14 w-64 rounded-xl bg-white/10" />
+            <div className="h-4 w-32 rounded bg-white/8" />
+        </div>
+    );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
 
-export function HomePage() {
+export function TagPage() {
+    const { tagName = "" } = useParams<{ tagName: string }>();
+
     const [posts, setPosts] = useState<FeedItemResponse[]>([]);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -156,22 +158,32 @@ export function HomePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isFirst, setIsFirst] = useState(true);
     const [isLast, setIsLast] = useState(true);
+    const [notFound, setNotFound] = useState(false);
 
-    const fetchPosts = useCallback(async (p: number) => {
-        setIsLoading(true);
-        try {
-            const data = await getOpenPosts(p, PAGE_SIZE);
-            setPosts(data.content);
-            setTotalPages(data.totalPages);
-            setTotalElements(data.totalElements);
-            setIsFirst(data.first);
-            setIsLast(data.last);
-        } catch {
-            /* silent */
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+    const fetchPosts = useCallback(
+        async (p: number) => {
+            setIsLoading(true);
+            setNotFound(false);
+            try {
+                const data = await getTagPosts(tagName, p, PAGE_SIZE);
+                setPosts(data.content);
+                setTotalPages(data.totalPages);
+                setTotalElements(data.totalElements);
+                setIsFirst(data.first);
+                setIsLast(data.last);
+            } catch (err: unknown) {
+                const status = (err as { response?: { status?: number } })?.response?.status;
+                if (status === 404) setNotFound(true);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [tagName]
+    );
+
+    useEffect(() => {
+        setPage(0);
+    }, [tagName]);
 
     useEffect(() => {
         fetchPosts(page);
@@ -184,71 +196,94 @@ export function HomePage() {
 
     return (
         <div className="flex flex-col items-center w-full py-8 px-4">
-            {/* Narrow feed column — matches Instagram ~470px */}
             <div className="w-full max-w-[600px] flex flex-col gap-1">
-                {/* Page label */}
-                <div className="flex items-center gap-2 mb-4 px-1">
-                    <Flame className="size-4 text-orange-400" />
-                    <span className="text-sm font-semibold text-white/70">
-                        Open Posts
-                    </span>
-                    {!isLoading && (
-                        <span className="text-xs text-white/30 ml-1">
-                            · {totalElements} total
-                        </span>
-                    )}
-                </div>
-
-                {/* Feed */}
-                <div className="flex flex-col gap-5">
-                    {isLoading ? (
-                        Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-                    ) : posts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                            <div className="flex size-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
-                                <Flame className="size-8 text-white/20" />
-                            </div>
-                            <div>
-                                <p className="text-base font-semibold text-white/50">No open posts yet</p>
-                                <p className="text-sm text-white/30 mt-1">
-                                    Be the first — hit Create Post above!
-                                </p>
-                            </div>
+                {/* ── Header ── */}
+                {isLoading && page === 0 ? (
+                    <HeaderSkeleton />
+                ) : notFound ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                        <div className="flex size-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
+                            <AlertCircle className="size-8 text-white/20" />
                         </div>
-                    ) : (
-                        posts.map((post) => <PostCard key={post.id} post={post} />)
-                    )}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-3 mt-8">
+                        <div>
+                            <p className="text-base font-semibold text-white/50">Tag not found</p>
+                            <p className="text-sm text-white/30 mt-1">
+                                No posts exist for <span className="text-orange-400">#{tagName}</span>
+                            </p>
+                        </div>
                         <Button
+                            asChild
                             variant="outline"
                             size="sm"
-                            onClick={() => goToPage(page - 1)}
-                            disabled={isFirst || isLoading}
-                            className="border-white/20 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30"
-                            id="prev-page-btn"
+                            className="border-white/20 text-white/60 hover:bg-white/10 hover:text-white mt-2"
                         >
-                            <ChevronLeft className="size-4 mr-1" />
-                            Previous
-                        </Button>
-                        <span className="text-xs text-white/30 tabular-nums">
-                            {page + 1} / {totalPages}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => goToPage(page + 1)}
-                            disabled={isLast || isLoading}
-                            className="border-white/20 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30"
-                            id="next-page-btn"
-                        >
-                            Next
-                            <ChevronRight className="size-4 ml-1" />
+                            <Link to="/">Back to feed</Link>
                         </Button>
                     </div>
+                ) : (
+                    <>
+                        {/* Big hero header */}
+                        <div className="mb-8">
+                            <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 bg-clip-text text-transparent leading-tight">
+                                #{tagName}
+                            </h1>
+                            {!isLoading && (
+                                <p className="text-sm text-white/40 mt-2">
+                                    {totalElements} {totalElements === 1 ? "post" : "posts"}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px bg-white/8 mb-6" />
+
+                        {/* Feed */}
+                        <div className="flex flex-col gap-5">
+                            {isLoading ? (
+                                Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+                            ) : posts.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                                    <div className="flex size-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
+                                        <Hash className="size-8 text-white/20" />
+                                    </div>
+                                    <p className="text-base font-semibold text-white/50">No posts yet</p>
+                                </div>
+                            ) : (
+                                posts.map((post) => <PostCard key={post.id} post={post} />)
+                            )}
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-3 mt-8">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => goToPage(page - 1)}
+                                    disabled={isFirst || isLoading}
+                                    className="border-white/20 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                                    id="tag-prev-page-btn"
+                                >
+                                    <ChevronLeft className="size-4 mr-1" />
+                                    Previous
+                                </Button>
+                                <span className="text-xs text-white/30 tabular-nums">
+                                    {page + 1} / {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => goToPage(page + 1)}
+                                    disabled={isLast || isLoading}
+                                    className="border-white/20 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                                    id="tag-next-page-btn"
+                                >
+                                    Next
+                                    <ChevronRight className="size-4 ml-1" />
+                                </Button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

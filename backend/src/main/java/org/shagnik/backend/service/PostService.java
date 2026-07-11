@@ -157,7 +157,7 @@ public class PostService {
         return toPostResponse(settled);
     }
 
-    private PostResponse toPostResponse(Post post) {
+    public PostResponse toPostResponse(Post post) {
         List<String> tagNames = post.getTags().stream()
                 .map(Tag::getName)
                 .sorted()

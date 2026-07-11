@@ -8,6 +8,8 @@ import { SettledPage } from './pages/SettledPage';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from './components/ui/sonner';
 import PostDetailsPage from './pages/PostDetailsPage';
+import { TagPage } from './pages/TagPage';
+import { UserProfilePage } from './pages/UserProfilePage';
 
 const router = createBrowserRouter([
   {
@@ -35,11 +37,20 @@ const router = createBrowserRouter([
             element: <SettledPage />
           },
           {
-            path: 'posts/:postId', 
+            path: 'posts/:postId',
             element: <PostDetailsPage />
           },
         ]
-      }
+      },
+      // Public routes — no auth required
+      {
+        path: 'tags/:tagName',
+        element: <TagPage />
+      },
+      {
+        path: 'users/:username',
+        element: <UserProfilePage />
+      },
     ]
   }
 ]);
