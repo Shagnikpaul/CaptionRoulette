@@ -381,10 +381,10 @@ function PostDetailsPage() {
             {/* Layout wrapper */}
             <main className="w-full max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
-                {/* ── Left Column: Responsive Image + Overlay Pills ── */}
-                <section className="lg:col-span-7 flex flex-col gap-4">
-                    {/* Image Viewport matching aspect ratio of original image up to desktop viewport height */}
-                    <div className="relative w-full rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center overflow-hidden group select-none">
+                {/* ── Left Column: Image + Below-image Metadata ── */}
+                <section className="lg:col-span-7 flex flex-col gap-3">
+                    {/* Image */}
+                    <div className="w-full rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center overflow-hidden select-none">
                         {!imgError ? (
                             <img
                                 src={getImageUrl(post.imageKey)}
@@ -397,63 +397,67 @@ function PostDetailsPage() {
                                 <ImageOff className="size-16" />
                             </div>
                         )}
+                    </div>
 
-                        {/* Title & Metadata overlay (no card background) */}
-                        <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-2 transition-all duration-300 ease-in-out opacity-100 transform translate-y-0 group-hover:opacity-0 group-hover:translate-y-2 group-hover:pointer-events-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                            {post.title && (
-                                <h2 className="text-base font-bold text-white leading-snug drop-shadow-md">
-                                    {post.title}
-                                </h2>
-                            )}
+                    {/* ── Below-image metadata ── */}
+                    <div className="flex flex-col gap-2 px-1">
+                        {/* Title */}
+                        {post.title && (
+                            <h2 className="text-base font-bold text-white leading-snug">
+                                {post.title}
+                            </h2>
+                        )}
 
-                            <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {/* Poster Pill */}
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/20 text-[11px] font-medium text-white shadow-sm">
-                                        
-                                        <span className="text-white/60">posted by</span>
-                                        <span className="font-semibold text-white">{post.posterUsername}</span>
-                                    </div>
-
-                                    {/* Urgency status / Settlement date Pill */}
-                                    {isSettled ? (
-                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-yellow-500/20 text-[11px] font-semibold text-yellow-400 shadow-sm">
-                                            <Trophy className="size-3 text-yellow-400" />
-                                            <span>Settled {formatSettlementDate(post.settledAt)}</span>
-                                        </div>
-                                    ) : (
-                                        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${urgencyClass}`}>
-                                            <Clock className="size-3" />
-                                            <span>{getTimeRemaining(post.lockAt)}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Status Pill */}
-                                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${isSettled ? 'text-yellow-400 font-bold' : 'text-emerald-400 font-bold'}`}>
-                                        {isSettled ? (
-                                            <>
-                                                <Trophy className="size-3" />
-                                                <span>Settled</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Flame className="size-3" />
-                                                <span>Open</span>
-                                            </>
-                                        )}
-                                    </div>
+                        {/* Row: avatar + poster (left) · status + time (right) */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                            {/* Poster avatar link */}
+                            <Link
+                                to={`/users/${post.posterUsername}`}
+                                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                            >
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/60 to-pink-600/60 text-[11px] font-bold text-white uppercase">
+                                    {post.posterUsername.charAt(0)}
                                 </div>
+                                <span className="text-sm font-semibold text-white/90 leading-none">
+                                    {post.posterUsername}
+                                </span>
+                            </Link>
 
-                                {/* Tags section (right aligned, plain bold text, no pills) */}
-                                {post.tags && post.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 text-[11px] font-bold text-orange-400 drop-shadow-md select-text">
-                                        {post.tags.map((tag) => (
-                                            <span key={tag}>#{tag}</span>
-                                        ))}
+                            {/* Status + urgency/settled */}
+                            <div className="flex items-center gap-2">
+                                {isSettled ? (
+                                    <div className="flex items-center gap-1 text-[11px] font-semibold text-yellow-400">
+                                        <Trophy className="size-3" />
+                                        <span>Settled {formatSettlementDate(post.settledAt)}</span>
+                                    </div>
+                                ) : (
+                                    <div className={`flex items-center gap-1 text-[11px] font-semibold ${urgencyClass}`}>
+                                        <Clock className="size-3" />
+                                        <span>{getTimeRemaining(post.lockAt)}</span>
                                     </div>
                                 )}
+                                <span className="text-white/20">·</span>
+                                <div className={`flex items-center gap-1 text-[11px] font-bold ${isSettled ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                                    {isSettled ? <Trophy className="size-3" /> : <Flame className="size-3" />}
+                                    <span>{isSettled ? 'Settled' : 'Open'}</span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Tags */}
+                        {post.tags && post.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {post.tags.map((tag) => (
+                                    <Link
+                                        key={tag}
+                                        to={`/tags/${tag}`}
+                                        className="text-[11px] font-bold text-orange-400/80 hover:text-orange-300 transition-colors"
+                                    >
+                                        #{tag}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </section>
 

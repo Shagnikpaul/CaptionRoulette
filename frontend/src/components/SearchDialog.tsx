@@ -127,7 +127,7 @@ export function SearchDialog() {
             </DialogTrigger>
 
             <DialogContent
-                className="p-0 gap-0 overflow-hidden border-white/10 bg-black/65 backdrop-blur-xl sm:max-w-2xl w-full !top-[12%] translate-y-0"
+                className="p-0 gap-0 overflow-hidden border-white/10 bg-black/75 backdrop-blur-xl sm:max-w-3xl w-full !top-[10%] translate-y-0 rounded-2xl shadow-2xl"
                 showCloseButton={false}
             >
                 <DialogHeader className="hidden">
@@ -135,50 +135,40 @@ export function SearchDialog() {
                 </DialogHeader>
 
                 {/* ── Search input ── */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-white/8">
-                    {/* <Search className="size-4 text-white/40 shrink-0" /> */}
-                    <Field className="p-0">
-                        <InputGroup >
-                            <InputGroupInput   placeholder="Search..." ref={inputRef}
+                <div className="flex items-center gap-0 border-b border-white/8 w-full">
+                    <div className="flex-1 min-w-0">
+                        <InputGroup className="border-0 bg-transparent shadow-none focus-within:ring-0 w-full h-14 rounded-none">
+                            <InputGroupInput
+                                placeholder="Search tags or users..."
+                                ref={inputRef}
                                 id="search-input"
                                 type="text"
-                    
-                                
-            
-                                className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
+                                className="outline-none focus:outline-none focus:ring-0 w-full bg-transparent text-base md:text-lg text-white placeholder:text-white/30 outline-none pl-1"
                                 autoComplete="off"
-                                spellCheck={false} value={query}
+                                spellCheck={false}
+                                value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                
-                                 />
-                            <InputGroupAddon align="inline-start">
-                                <SearchIcon className="text-muted-foreground" />
+
+                            />
+                            <InputGroupAddon align="inline-start" className="pl-4 pr-1">
+                                <SearchIcon className="text-white/45 size-5" />
                             </InputGroupAddon>
                         </InputGroup>
-                    </Field>
-                    {/* <Input
-                        ref={inputRef}
-                        id="search-input"
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search tags or users…"
-                        className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
-                        autoComplete="off"
-                        spellCheck={false}
-                    /> */}
-                    {isLoading && (
-                        <Loader2 className="size-4 text-white/30 animate-spin shrink-0" />
-                    )}
-                    {query && !isLoading && (
-                        <button
-                            onClick={() => { setQuery(""); setResults(null); }}
-                            className="text-white/30 hover:text-white/70 transition-colors"
-                            id="search-clear-btn"
-                        >
-                            <X className="size-4" />
-                        </button>
-                    )}
+                    </div>
+                    {/* <div className="flex items-center gap-3 pr-4 shrink-0">
+                        {isLoading && (
+                            <Loader2 className="size-5 text-white/30 animate-spin" />
+                        )}
+                        {query && !isLoading && (
+                            <button
+                                onClick={() => { setQuery(""); setResults(null); }}
+                                className="text-white/30 hover:text-white/70 transition-colors"
+                                id="search-clear-btn"
+                            >
+                                <X className="size-5" />
+                            </button>
+                        )}
+                    </div> */}
                 </div>
 
                 {/* ── Results panel ── */}
