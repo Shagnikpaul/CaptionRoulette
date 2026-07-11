@@ -17,13 +17,16 @@ public class FeedItemResponse {
     private LocalDateTime lockAt;
     private LocalDateTime settledAt;
     private UUID winningCaptionId;
+    private String winningCaptionText;
+    private String winningCaptionAuthor;
     private List<String> tags;
 
     public FeedItemResponse() {}
 
     public FeedItemResponse(UUID id, String posterUsername, String imageKey, String title,
                             PostStatus status, LocalDateTime createdAt, LocalDateTime lockAt,
-                            LocalDateTime settledAt, UUID winningCaptionId, List<String> tags) {
+                            LocalDateTime settledAt, UUID winningCaptionId, String winningCaptionText,
+                            String winningCaptionAuthor, List<String> tags) {
         this.id = id;
         this.posterUsername = posterUsername;
         this.imageKey = imageKey;
@@ -33,6 +36,8 @@ public class FeedItemResponse {
         this.lockAt = lockAt;
         this.settledAt = settledAt;
         this.winningCaptionId = winningCaptionId;
+        this.winningCaptionText = winningCaptionText;
+        this.winningCaptionAuthor = winningCaptionAuthor;
         this.tags = tags;
     }
 
@@ -45,5 +50,7 @@ public class FeedItemResponse {
     public LocalDateTime getLockAt() { return lockAt; }
     public LocalDateTime getSettledAt() { return settledAt; }
     public UUID getWinningCaptionId() { return winningCaptionId; }
+    public String getWinningCaptionText() { return winningCaptionText; }
+    public String getWinningCaptionAuthor() { return winningCaptionAuthor; }
     public List<String> getTags() { return tags; }
 }

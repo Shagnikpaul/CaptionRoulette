@@ -7,6 +7,7 @@ import {
     getCaptions,
     submitCaption,
     voteOnCaption,
+    selectWinner,
     type PostResponse,
     type CaptionResponse,
     type PagedResponse
@@ -71,6 +72,22 @@ function timeAgo(iso: string | null): string {
     });
 }
 
+function formatSettlementDate(iso: string | null): string {
+    if (!iso) return '—';
+    const date = new Date(iso);
+    const day = date.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    
+    // Ordinal suffix
+    let suffix = 'th';
+    if (day === 1 || day === 21 || day === 31) suffix = 'st';
+    else if (day === 2 || day === 22) suffix = 'nd';
+    else if (day === 3 || day === 23) suffix = 'rd';
+    
+    return `${day}${suffix} ${month}`;
+}
+
 function PostDetailsPage() {
     const { postId } = useParams<{ postId: string }>();
     const { user } = useAuth();
@@ -91,6 +108,9 @@ function PostDetailsPage() {
 
     // Track in-flight vote requests to prevent race conditions
     const [votingCaptionIds, setVotingCaptionIds] = useState<Set<string>>(new Set());
+
+    // Track in-flight winner selection requests
+    const [isSelectingWinner, setIsSelectingWinner] = useState<string | null>(null);
 
     // Fetch handlers
     const fetchPost = useCallback(async (id: string) => {
@@ -266,6 +286,45 @@ function PostDetailsPage() {
         }
     };
 
+    const handleSelectWinner = async (captionId: string) => {
+        if (!postId) return;
+        setIsSelectingWinner(captionId);
+        try {
+            const updatedPost = await selectWinner(postId, captionId);
+            setPost(updatedPost);
+            toast.success('Winner selected successfully!');
+            // Refresh captions list to reflect updated states (like isWinner)
+            fetchCaptions(postId, captionsSort, captionsPage);
+        } catch (err) {
+            const parsed = parseApiError(err);
+            toast.error('Failed to select winner', {
+                description: parsed.message
+            });
+        } finally {
+            setIsSelectingWinner(null);
+        }
+    };
+
+    // Auto-refresh when voting deadline is reached to trigger backend lazy settlement
+    useEffect(() => {
+        if (!post || post.status !== 'OPEN' || !postId) return;
+
+        const lockTime = new Date(post.lockAt).getTime();
+        const diffMs = lockTime - Date.now();
+
+        if (diffMs <= 0) {
+            // Already past lockAt, fetch to trigger settlement
+            fetchPost(postId);
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            fetchPost(postId);
+        }, diffMs + 1000); // 1-second buffer after lockAt
+
+        return () => clearTimeout(timer);
+    }, [post?.id, post?.status, post?.lockAt, postId, fetchPost]);
+
     if (isLoadingPost) {
         return (
             <div className="flex-1 flex items-center justify-center py-24 bg-black text-white">
@@ -356,11 +415,18 @@ function PostDetailsPage() {
                                         <span className="font-semibold text-white">{post.posterUsername}</span>
                                     </div>
 
-                                    {/* Urgency status Pill */}
-                                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${urgencyClass}`}>
-                                        <Clock className="size-3" />
-                                        <span>{getTimeRemaining(post.lockAt)}</span>
-                                    </div>
+                                    {/* Urgency status / Settlement date Pill */}
+                                    {isSettled ? (
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-yellow-500/20 text-[11px] font-semibold text-yellow-400 shadow-sm">
+                                            <Trophy className="size-3 text-yellow-400" />
+                                            <span>Settled {formatSettlementDate(post.settledAt)}</span>
+                                        </div>
+                                    ) : (
+                                        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${urgencyClass}`}>
+                                            <Clock className="size-3" />
+                                            <span>{getTimeRemaining(post.lockAt)}</span>
+                                        </div>
+                                    )}
 
                                     {/* Status Pill */}
                                     <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${isSettled ? 'text-yellow-400 font-bold' : 'text-emerald-400 font-bold'}`}>
@@ -400,6 +466,29 @@ function PostDetailsPage() {
                             <h2 className="text-lg font-bold text-white tracking-tight">Post Captions</h2>
                             <p className="text-xs text-white/50 mt-1">Submit your creative lines or vote for your favorites.</p>
                         </div>
+
+                        {/* Winner Announcement Section for Settled Posts */}
+                        {isSettled && (
+                            <div className="rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-amber-500/5 p-4 flex flex-col gap-3 shadow-[0_0_15px_rgba(234,179,8,0.05)]">
+                                <div className="flex items-center gap-1.5 text-yellow-400 font-bold text-xs uppercase tracking-wider">
+                                    <Trophy className="size-4 text-yellow-400 animate-pulse" />
+                                    <span>Winner Crowned</span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-sm font-medium text-white/95 italic leading-relaxed">
+                                        "{post.winningCaptionText || "No caption text"}"
+                                    </p>
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-yellow-500/10 text-[10px] text-white/50">
+                                        <span>
+                                            Winner: <span className="font-semibold text-yellow-400">@{post.winningCaptionAuthor || "unknown"}</span>
+                                        </span>
+                                        <span>
+                                            Settled: <span className="font-semibold text-white/70">{formatSettlementDate(post.settledAt)}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Submission form block */}
                         {shouldDisableForm ? (
@@ -524,6 +613,13 @@ function PostDetailsPage() {
                                     const isAuthor = caption.authorUsername === user?.username;
                                     const voteAllowed = canVoteOnCaption(caption);
                                     const isVoting = votingCaptionIds.has(caption.id);
+
+                                    const isOwner = isPoster;
+                                    const isOpen = post.status === 'OPEN';
+                                    const beforeDeadline = new Date() < new Date(post.lockAt);
+                                    const showSelectWinnerButton = isOwner && isOpen;
+                                    const canSelectWinner = isOwner && isOpen && beforeDeadline;
+
                                     return (
                                         <div
                                             key={caption.id}
@@ -611,6 +707,31 @@ function PostDetailsPage() {
                                                         <div className="flex items-center gap-1.5 mt-2.5 text-[9px] font-bold text-yellow-400 uppercase tracking-wider">
                                                             <Trophy className="size-3" />
                                                             <span>Winning Caption</span>
+                                                        </div>
+                                                    )}
+
+                                                    {showSelectWinnerButton && (
+                                                        <div className="mt-3 flex items-center justify-end">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={!canSelectWinner || isSelectingWinner !== null}
+                                                                onClick={() => handleSelectWinner(caption.id)}
+                                                                className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-[10px] font-semibold py-1 px-2.5 h-7 rounded-lg"
+                                                                title={!beforeDeadline ? "Voting deadline has passed" : undefined}
+                                                            >
+                                                                {isSelectingWinner === caption.id ? (
+                                                                    <>
+                                                                        <Loader2 className="mr-1 size-3 animate-spin" />
+                                                                        Selecting...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Trophy className="mr-1 size-3" />
+                                                                        Select Winner
+                                                                    </>
+                                                                )}
+                                                            </Button>
                                                         </div>
                                                     )}
                                                 </div>

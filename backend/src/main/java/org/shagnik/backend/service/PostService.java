@@ -3,17 +3,17 @@ package org.shagnik.backend.service;
 import org.shagnik.backend.dto.CreatePostRequest;
 import org.shagnik.backend.dto.FeedItemResponse;
 import org.shagnik.backend.dto.PostResponse;
-import org.shagnik.backend.entity.Post;
-import org.shagnik.backend.entity.PostStatus;
-import org.shagnik.backend.entity.Tag;
-import org.shagnik.backend.entity.User;
+import org.shagnik.backend.entity.*;
 import org.shagnik.backend.exception.InvalidImageKeyException;
 import org.shagnik.backend.exception.PostNotFoundException;
+import org.shagnik.backend.exception.ResourceNotFoundException;
 import org.shagnik.backend.exception.TagLimitExceededException;
+import org.shagnik.backend.repository.CaptionRepository;
 import org.shagnik.backend.repository.PostRepository;
 import org.shagnik.backend.repository.TagRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +33,8 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
+    private final SettlementService settlementService;
+    private final CaptionRepository captionRepository;
     private final AuthService authService;
     private final S3Client s3Client;
 
@@ -40,9 +42,11 @@ public class PostService {
     private String bucketName;
 
     public PostService(PostRepository postRepository, TagRepository tagRepository,
-            AuthService authService, S3Client s3Client) {
+            AuthService authService, S3Client s3Client, SettlementService settlementService, CaptionRepository captionRepository) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
+        this.settlementService = settlementService;
+        this.captionRepository = captionRepository;
         this.authService = authService;
         this.s3Client = s3Client;
     }
@@ -115,23 +119,42 @@ public class PostService {
         return result;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<FeedItemResponse> getOpenFeed(Pageable pageable) {
-        return postRepository.findByStatusOrderByLockAtAsc(PostStatus.OPEN, pageable)
-                .map(this::toFeedItemResponse);
+        Page<Post> page = postRepository.findByStatusOrderByLockAtAsc(PostStatus.OPEN, pageable);
+        page.forEach(settlementService::autoSettleIfNeeded);
+
+        List<FeedItemResponse> items = page.getContent().stream()
+                .filter(p -> p.getStatus() == PostStatus.OPEN) // exclude any that just flipped to SETTLED
+                .map(this::toFeedItemResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(items, pageable, page.getTotalElements());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<FeedItemResponse> getSettledFeed(Pageable pageable) {
-        return postRepository.findByStatusOrderBySettledAtDesc(PostStatus.SETTLED, pageable)
-                .map(this::toFeedItemResponse);
+        Page<Post> page = postRepository.findByStatusOrderBySettledAtDesc(PostStatus.SETTLED, pageable);
+        // Already SETTLED — this call is a safe no-op, kept only for consistency with getOpenFeed.
+        page.forEach(settlementService::autoSettleIfNeeded);
+        return page.map(this::toFeedItemResponse);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PostResponse getPostById(UUID id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new PostNotFoundException(id.toString()));
+        post = settlementService.autoSettleIfNeeded(post);
         return toPostResponse(post);
+    }
+
+    @Transactional
+    public PostResponse selectWinner(String username, UUID postId, UUID captionId) {
+        User caller = authService.getCurrentUser(username);
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException(postId.toString()));
+        Post settled = settlementService.manuallySettle(post, caller, captionId);
+        return toPostResponse(settled);
     }
 
     private PostResponse toPostResponse(Post post) {
@@ -139,11 +162,22 @@ public class PostService {
                 .map(Tag::getName)
                 .sorted()
                 .collect(Collectors.toList());
+
+        String winningText = null;
+        String winningAuthor = null;
+        if (post.getStatus() == PostStatus.SETTLED && post.getWinningCaptionId() != null) {
+            Caption winner = captionRepository.findById(post.getWinningCaptionId()).orElse(null);
+            if (winner != null) {
+                winningText = winner.getText();
+                winningAuthor = winner.getAuthor().getUsername();
+            }
+        }
+
         return new PostResponse(
                 post.getId(), post.getPoster().getId(), post.getPoster().getUsername(),
                 post.getImageKey(), post.getTitle(), post.getStatus(),
                 post.getCreatedAt(), post.getLockAt(), post.getSettledAt(),
-                post.getWinningCaptionId(), tagNames);
+                post.getWinningCaptionId(), winningText, winningAuthor, tagNames);
     }
 
     private FeedItemResponse toFeedItemResponse(Post post) {
@@ -151,9 +185,20 @@ public class PostService {
                 .map(Tag::getName)
                 .sorted()
                 .collect(Collectors.toList());
+
+        String winningText = null;
+        String winningAuthor = null;
+        if (post.getStatus() == PostStatus.SETTLED && post.getWinningCaptionId() != null) {
+            Caption winner = captionRepository.findById(post.getWinningCaptionId()).orElse(null);
+            if (winner != null) {
+                winningText = winner.getText();
+                winningAuthor = winner.getAuthor().getUsername();
+            }
+        }
+
         return new FeedItemResponse(
                 post.getId(), post.getPoster().getUsername(), post.getImageKey(),
                 post.getTitle(), post.getStatus(), post.getCreatedAt(), post.getLockAt(),
-                post.getSettledAt(), post.getWinningCaptionId(), tagNames);
+                post.getSettledAt(), post.getWinningCaptionId(), winningText, winningAuthor, tagNames);
     }
 }

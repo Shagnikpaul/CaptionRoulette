@@ -18,6 +18,8 @@ public class PostResponse {
     private LocalDateTime lockAt;
     private LocalDateTime settledAt;
     private UUID winningCaptionId;
+    private String winningCaptionText;
+    private String winningCaptionAuthor;
     private List<String> tags;
 
     public PostResponse() {}
@@ -25,7 +27,8 @@ public class PostResponse {
     public PostResponse(UUID id, UUID posterId, String posterUsername, String imageKey,
                         String title, PostStatus status, LocalDateTime createdAt,
                         LocalDateTime lockAt, LocalDateTime settledAt,
-                        UUID winningCaptionId, List<String> tags) {
+                        UUID winningCaptionId,String winningCaptionText,
+                        String winningCaptionAuthor, List<String> tags) {
         this.id = id;
         this.posterId = posterId;
         this.posterUsername = posterUsername;
@@ -36,6 +39,8 @@ public class PostResponse {
         this.lockAt = lockAt;
         this.settledAt = settledAt;
         this.winningCaptionId = winningCaptionId;
+        this.winningCaptionText = winningCaptionText;
+        this.winningCaptionAuthor = winningCaptionAuthor;
         this.tags = tags;
     }
 
@@ -49,5 +54,7 @@ public class PostResponse {
     public LocalDateTime getLockAt() { return lockAt; }
     public LocalDateTime getSettledAt() { return settledAt; }
     public UUID getWinningCaptionId() { return winningCaptionId; }
+    public String getWinningCaptionText() { return winningCaptionText; }
+    public String getWinningCaptionAuthor() { return winningCaptionAuthor; }
     public List<String> getTags() { return tags; }
 }

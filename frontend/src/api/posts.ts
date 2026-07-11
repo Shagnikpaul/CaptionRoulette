@@ -19,6 +19,8 @@ export interface PostResponse {
   lockAt: string;
   settledAt: string | null;
   winningCaptionId: string | null;
+  winningCaptionText: string | null;
+  winningCaptionAuthor: string | null;
   tags: string[];
 }
 
@@ -32,6 +34,8 @@ export interface FeedItemResponse {
   lockAt: string;
   settledAt: string | null;
   winningCaptionId: string | null;
+  winningCaptionText: string | null;
+  winningCaptionAuthor: string | null;
   tags: string[];
 }
 
@@ -175,6 +179,20 @@ export async function voteOnCaption(
   const response = await client.post<VoteResponse>(
     `/api/captions/${captionId}/vote`,
     payload
+  );
+  return response.data;
+}
+
+/**
+ * Manually selects a winning caption for a post. Owner only.
+ */
+export async function selectWinner(
+  postId: string,
+  captionId: string
+): Promise<PostResponse> {
+  const response = await client.post<PostResponse>(
+    `/api/posts/${postId}/select-winner`,
+    { captionId }
   );
   return response.data;
 }

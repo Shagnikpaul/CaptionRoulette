@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.shagnik.backend.dto.CreatePostRequest;
 import org.shagnik.backend.dto.FeedItemResponse;
 import org.shagnik.backend.dto.PostResponse;
+import org.shagnik.backend.dto.SelectWinnerRequest;
 import org.shagnik.backend.service.PostService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,6 +55,18 @@ public class PostController {
     @GetMapping("/{id}")
     public ResponseEntity<PostResponse> getPostById(@PathVariable UUID id) {
         PostResponse response = postService.getPostById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/select-winner")
+    public ResponseEntity<PostResponse> selectWinner(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody SelectWinnerRequest request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        PostResponse response = postService.selectWinner(authentication.getName(), id, request.getCaptionId());
         return ResponseEntity.ok(response);
     }
 }
