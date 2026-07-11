@@ -3,8 +3,11 @@ import { ProtectedRoute } from './routes/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { HomePage } from './pages/HomePage';
+import { SettledPage } from './pages/SettledPage';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from './components/ui/sonner';
+import PostDetailsPage from './pages/PostDetailsPage';
 
 const router = createBrowserRouter([
   {
@@ -25,13 +28,16 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: (
-              <div className="p-12 font-['Geist']">
-                <h1 className="text-4xl font-bold mb-4 font-['Bricolage_Grotesque']">Dashboard</h1>
-                <p className="text-gray-400">Welcome to Caption Roulette! This is a protected route.</p>
-              </div>
-            )
-          }
+            element: <HomePage />
+          },
+          {
+            path: 'settled',
+            element: <SettledPage />
+          },
+          {
+            path: 'posts/:postId', 
+            element: <PostDetailsPage />
+          },
         ]
       }
     ]
