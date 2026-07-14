@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface CaptionRepository extends JpaRepository<Caption, UUID> {
@@ -31,4 +32,9 @@ public interface CaptionRepository extends JpaRepository<Caption, UUID> {
             countQuery = "SELECT COUNT(c) FROM Caption c WHERE c.post.id = :postId"
     )
     Page<Caption> findByPostIdOrderByScoreDescThenOldest(@Param("postId") UUID postId, Pageable pageable);
+    List<Caption> findAllByPostId(UUID postId);
+
+    // this will be used by deletePost service method we dont need full caption entities but only their IDs
+    @Query("SELECT c.id FROM Caption c WHERE c.post.id = :postId")
+    List<UUID> findIdsByPostId(@Param("postId") UUID postId);
 }

@@ -45,4 +45,13 @@ public class CaptionController {
         Page<CaptionResponse> captions = captionService.getCaptions(postId, sort, page, size, authentication);
         return ResponseEntity.ok(captions);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCaption(Authentication authentication, @PathVariable UUID id) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        captionService.deleteCaption(authentication.getName(), id);
+        return ResponseEntity.noContent().build();
+    }
 }

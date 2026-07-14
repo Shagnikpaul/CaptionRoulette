@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Hash, User, Loader2, X, SearchIcon } from "lucide-react";
+import { Search, Hash, User, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -12,7 +12,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { searchGlobal, type SearchResult } from "@/api/search";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
-import { Field } from "./ui/field";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -77,8 +77,8 @@ public class SettlementService {
 
         Caption winner = determineWinner(post);
         if (winner == null) {
-            // No captions were ever submitted — nothing to crown, leave OPEN.
-            // (Alternatively you may want a "SETTLED with no winner" state; flagging this as a product decision.)
+
+            settleWithNoWinner(post);
             return post;
         }
 
@@ -134,5 +134,13 @@ public class SettlementService {
         notificationRepository.save(notification);
 
         return saved;
+    }
+    // if no captions were ever submitted....
+    @Transactional
+    protected Post settleWithNoWinner(Post post) {
+        post.setStatus(PostStatus.SETTLED);
+        post.setSettledAt(LocalDateTime.now());
+        // winningCaptionId stays null — intentional, means "settled, no captions submitted"
+        return postRepository.save(post);
     }
 }

@@ -3,15 +3,9 @@ package org.shagnik.backend.service;
 import lombok.RequiredArgsConstructor;
 import org.shagnik.backend.dto.CaptionRequest;
 import org.shagnik.backend.dto.CaptionResponse;
-import org.shagnik.backend.entity.Caption;
-import org.shagnik.backend.entity.Post;
-import org.shagnik.backend.entity.PostStatus;
-import org.shagnik.backend.entity.User;
+import org.shagnik.backend.entity.*;
 import org.shagnik.backend.exception.*;
-import org.shagnik.backend.repository.CaptionRepository;
-import org.shagnik.backend.repository.PostRepository;
-import org.shagnik.backend.repository.UserRepository;
-import org.shagnik.backend.repository.VoteRepository;
+import org.shagnik.backend.repository.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,7 +27,9 @@ public class CaptionService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final VoteRepository voteRepository;
+    private final ReportRepository reportRepository;
     private final AuthService authService;
+
 
     @Transactional
     public CaptionResponse submitCaption(UUID postId, CaptionRequest request, String username) {
@@ -77,6 +73,30 @@ public class CaptionService {
 
         // Brand-new caption — no votes exist yet, so score is 0 and myVote is null
         return toResponse(caption, 0, null);
+    }
+
+    @Transactional
+    public void deleteCaption(String username, UUID captionId) {
+        Caption caption = captionRepository.findById(captionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Caption not found: " + captionId));
+
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        // Only the caption author
+        if (!caption.getAuthor().getId().equals(currentUser.getId())) {
+            throw new ForbiddenActionException("You cannot delete another user's caption");
+        }
+
+        // Only while the parent post is OPEN (FR10)
+        if (caption.getPost().getStatus() != PostStatus.OPEN) {
+            throw new PostClosedException("Captions can only be deleted while the post is open");
+        }
+
+        voteRepository.deleteByCaptionId(caption.getId());
+        reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.CAPTION, caption.getId());
+
+        captionRepository.delete(caption);
     }
 
     public Page<CaptionResponse> getCaptions(UUID postId, String sort, int page, int size, Authentication authentication) {

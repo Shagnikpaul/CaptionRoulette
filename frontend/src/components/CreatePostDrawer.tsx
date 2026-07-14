@@ -231,9 +231,9 @@ export function CreatePostDrawer() {
 
             <Drawer direction="right" onOpenChange={handleDrawerOpenChange}>
                 <DrawerTrigger asChild>
-                    <Button id="create-post-trigger-btn">
+                    <Button id="create-post-trigger-btn" size={'icon-lg'}>
                         <PlusCircle className="w-4 h-4" />
-                        Create Post
+                        
                     </Button>
                 </DrawerTrigger>
 

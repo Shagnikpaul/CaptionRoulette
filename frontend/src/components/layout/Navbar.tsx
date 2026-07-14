@@ -1,8 +1,9 @@
-import { Aperture, User as UserIcon, LogOut, LogIn, Flame, Trophy, Search } from 'lucide-react';
+import { Aperture, User as UserIcon, LogOut, LogIn, Flame, Trophy } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
 import { Link, NavLink } from 'react-router-dom';
 import { CreatePostDrawer } from '../CreatePostDrawer';
+import { NotificationsDrawer } from '../NotificationsDrawer';
 import { SearchDialog } from '../SearchDialog';
 
 export function Navbar() {
@@ -10,8 +11,6 @@ export function Navbar() {
 
   return (
     <div className='sticky top-4 z-50 px-4'>
-
-
       <nav className="mx-auto flex items-center justify-between px-6 py-4 border border-white/10 bg-black/70 rounded-2xl backdrop-blur-md text-white">
         {/* Logo + Feed Nav */}
         <div className="flex w-full items-center gap-5">
@@ -61,11 +60,13 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
+              <CreatePostDrawer />
+              <NotificationsDrawer />
               <div className="flex items-center gap-2 text-sm text-gray-300">
                 <UserIcon className="w-4 h-4" />
                 <span>{user?.username}</span>
               </div>
-              <CreatePostDrawer />
+
               <Button
                 variant="destructive"
                 size="icon"

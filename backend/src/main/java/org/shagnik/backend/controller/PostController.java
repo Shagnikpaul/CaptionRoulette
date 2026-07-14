@@ -69,4 +69,13 @@ public class PostController {
         PostResponse response = postService.selectWinner(authentication.getName(), id, request.getCaptionId());
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePost(Authentication authentication, @PathVariable UUID id) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        postService.deletePost(authentication.getName(), id);
+        return ResponseEntity.noContent().build();
+    }
 }

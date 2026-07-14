@@ -6,6 +6,7 @@ import {
     ChevronRight,
     AlertCircle,
     Calendar,
+    User,
 } from "lucide-react";
 import { getUserProfile, getUserPosts, type UserProfile } from "@/api/search";
 import { getImageUrl, type FeedItemResponse } from "@/api/posts";

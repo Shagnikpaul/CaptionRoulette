@@ -10,6 +10,7 @@ import { Toaster } from './components/ui/sonner';
 import PostDetailsPage from './pages/PostDetailsPage';
 import { TagPage } from './pages/TagPage';
 import { UserProfilePage } from './pages/UserProfilePage';
+import { NotificationsPage } from './pages/NotificationsPage';
 
 const router = createBrowserRouter([
   {
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
           {
             path: 'posts/:postId',
             element: <PostDetailsPage />
+          },
+          {
+            path: 'notifications',
+            element: <NotificationsPage />
           },
         ]
       },

@@ -1,16 +1,12 @@
 package org.shagnik.backend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.shagnik.backend.dto.CreatePostRequest;
 import org.shagnik.backend.dto.FeedItemResponse;
 import org.shagnik.backend.dto.PostResponse;
 import org.shagnik.backend.entity.*;
-import org.shagnik.backend.exception.InvalidImageKeyException;
-import org.shagnik.backend.exception.PostNotFoundException;
-import org.shagnik.backend.exception.ResourceNotFoundException;
-import org.shagnik.backend.exception.TagLimitExceededException;
-import org.shagnik.backend.repository.CaptionRepository;
-import org.shagnik.backend.repository.PostRepository;
-import org.shagnik.backend.repository.TagRepository;
+import org.shagnik.backend.exception.*;
+import org.shagnik.backend.repository.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -25,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor
 @Service
 public class PostService {
 
@@ -36,20 +33,16 @@ public class PostService {
     private final SettlementService settlementService;
     private final CaptionRepository captionRepository;
     private final AuthService authService;
+    private final UserRepository userRepository;
+    private final ReportRepository reportRepository;
+    private final NotificationRepository notificationRepository;
+    private final VoteRepository voteRepository;
     private final S3Client s3Client;
 
     @Value("${aws.s3_bucket}")
     private String bucketName;
 
-    public PostService(PostRepository postRepository, TagRepository tagRepository,
-            AuthService authService, S3Client s3Client, SettlementService settlementService, CaptionRepository captionRepository) {
-        this.postRepository = postRepository;
-        this.tagRepository = tagRepository;
-        this.settlementService = settlementService;
-        this.captionRepository = captionRepository;
-        this.authService = authService;
-        this.s3Client = s3Client;
-    }
+
 
     @Transactional
     public PostResponse createPost(String username, CreatePostRequest request) {
@@ -155,6 +148,33 @@ public class PostService {
                 .orElseThrow(() -> new ResourceNotFoundException(postId.toString()));
         Post settled = settlementService.manuallySettle(post, caller, captionId);
         return toPostResponse(settled);
+    }
+
+    @Transactional
+    public void deletePost(String username, UUID postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        if (!post.getPoster().getId().equals(currentUser.getId())) {
+            throw new ForbiddenActionException("You cannot delete another user's post");
+        }
+
+        List<UUID> captionIds = captionRepository.findIdsByPostId(postId); // <-- ID projection, not entities to prevent
+        // transient entities error by hibernate
+
+        if (!captionIds.isEmpty()) {
+            voteRepository.deleteByCaptionIdIn(captionIds);
+            reportRepository.deleteByTargetTypeAndTargetIdIn(ReportTargetType.CAPTION, captionIds);
+            captionRepository.deleteAllByIdInBatch(captionIds);
+        }
+
+        notificationRepository.deleteByReferencePostId(postId);
+        reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.POST, postId);
+
+        postRepository.delete(post);
     }
 
     public PostResponse toPostResponse(Post post) {
