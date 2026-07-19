@@ -24,21 +24,20 @@ public class SettlementService {
     private final CaptionRepository captionRepository;
     private final VoteRepository voteRepository;
     private final NotificationRepository notificationRepository;
+    private final RedisService redisService; // NEW — needed for Phase 8 invalidation
 
     public SettlementService(PostRepository postRepository,
                              CaptionRepository captionRepository,
                              VoteRepository voteRepository,
-                             NotificationRepository notificationRepository) {
+                             NotificationRepository notificationRepository,
+                             RedisService redisService) {
         this.postRepository = postRepository;
         this.captionRepository = captionRepository;
         this.voteRepository = voteRepository;
         this.notificationRepository = notificationRepository;
+        this.redisService = redisService;
     }
 
-    /**
-     * Manual settlement (FR16). Enforces owner / OPEN / before-lockAt / caption-belongs-to-post rules,
-     * then delegates the actual DB mutation to the shared settle() method.
-     */
     @Transactional
     public Post manuallySettle(Post post, User caller, UUID captionId) {
         if (!post.getPoster().getId().equals(caller.getId())) {
@@ -61,15 +60,11 @@ public class SettlementService {
         return settle(post, caption);
     }
 
-    /**
-     * Automatic / lazy settlement (FR17). Called from PostService whenever a post is read.
-     * No-ops unless the post is OPEN, past lockAt, and has no winner yet.
-     */
     @Transactional
     public Post autoSettleIfNeeded(Post post) {
         boolean expired = post.getStatus() == PostStatus.OPEN
                 && !LocalDateTime.now().isBefore(post.getLockAt())
-                && post.getWinningCaptionId() == null;
+                && post.getWinningCaption() == null; // FIX: was getWinningCaptionId()
 
         if (!expired) {
             return post;
@@ -77,17 +72,12 @@ public class SettlementService {
 
         Caption winner = determineWinner(post);
         if (winner == null) {
-
-            settleWithNoWinner(post);
-            return post;
+            return settleWithNoWinner(post); // FIX: return result directly instead of ignoring it
         }
 
         return settle(post, winner);
     }
 
-    /**
-     * FR17 algorithm: highest net score wins; ties broken by earliest submission.
-     */
     private Caption determineWinner(Post post) {
         List<Caption> captions = captionRepository.findByPost(post, Pageable.unpaged()).getContent();
         if (captions.isEmpty()) {
@@ -115,15 +105,11 @@ public class SettlementService {
         return winner;
     }
 
-    /**
-     * Shared settlement logic. Both manual and automatic settlement funnel through here.
-     * Wraps the post update + notification creation in one transaction.
-     */
     @Transactional
     protected Post settle(Post post, Caption winningCaption) {
         post.setStatus(PostStatus.SETTLED);
         post.setSettledAt(LocalDateTime.now());
-        post.setWinningCaptionId(winningCaption.getId());
+        post.setWinningCaption(winningCaption); // FIX: was setWinningCaptionId(winningCaption.getId())
         Post saved = postRepository.save(post);
 
         Notification notification = new Notification();
@@ -133,14 +119,22 @@ public class SettlementService {
         notification.setCreatedAt(LocalDateTime.now());
         notificationRepository.save(notification);
 
+        // Phase 8: post status/winner changed, and the winner has a new unread notification
+        redisService.del(PostService.postCacheKey(post.getId()));
+        redisService.del("notification-count:" + winningCaption.getAuthor().getId());
+
         return saved;
     }
-    // if no captions were ever submitted....
+
     @Transactional
     protected Post settleWithNoWinner(Post post) {
         post.setStatus(PostStatus.SETTLED);
         post.setSettledAt(LocalDateTime.now());
-        // winningCaptionId stays null — intentional, means "settled, no captions submitted"
-        return postRepository.save(post);
+        Post saved = postRepository.save(post);
+
+        // Phase 8: status still changed even with no winner — must evict either way
+        redisService.del(PostService.postCacheKey(post.getId()));
+
+        return saved;
     }
 }

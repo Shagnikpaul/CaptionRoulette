@@ -1,5 +1,7 @@
 package org.shagnik.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.shagnik.backend.entity.UserSummary;
 
 import java.util.List;
@@ -10,7 +12,9 @@ public class SearchResponse {
 
     public SearchResponse() {}
 
-    public SearchResponse(List<String> tags, List<UserSummary> users) {
+    @JsonCreator
+    public SearchResponse(@JsonProperty("tags") List<String> tags,
+                          @JsonProperty("users") List<UserSummary> users) {
         this.tags = tags;
         this.users = users;
     }

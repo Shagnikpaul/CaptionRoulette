@@ -42,10 +42,9 @@ public class Post {
     @Column(name = "settled_at")
     private LocalDateTime settledAt;
 
-    // No Caption entity yet — store the raw FK value.
-    // TODO: replace with @ManyToOne Caption once that entity exists.
-    @Column(name = "winning_caption_id")
-    private UUID winningCaptionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "winning_caption_id")
+    private Caption winningCaption;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -88,8 +87,13 @@ public class Post {
     public LocalDateTime getSettledAt() { return settledAt; }
     public void setSettledAt(LocalDateTime settledAt) { this.settledAt = settledAt; }
 
-    public UUID getWinningCaptionId() { return winningCaptionId; }
-    public void setWinningCaptionId(UUID winningCaptionId) { this.winningCaptionId = winningCaptionId; }
+    public Caption getWinningCaption() {
+        return winningCaption;
+    }
+
+    public void setWinningCaption(Caption winningCaption) {
+        this.winningCaption = winningCaption;
+    }
 
     public Set<Tag> getTags() { return tags; }
     public void setTags(Set<Tag> tags) { this.tags = tags; }

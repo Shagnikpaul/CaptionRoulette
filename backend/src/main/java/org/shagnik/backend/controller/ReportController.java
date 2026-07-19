@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.shagnik.backend.dto.ReportRequest;
 import org.shagnik.backend.dto.ReportResponse;
+import org.shagnik.backend.service.RateLimitService;
 import org.shagnik.backend.service.ReportService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReportController {
 
     private final ReportService reportService;
-
+    private final RateLimitService rateLimitService;
     @PostMapping
     public ResponseEntity<ReportResponse> submitReport(
             Authentication authentication,
@@ -27,6 +28,7 @@ public class ReportController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        rateLimitService.enforce("report", authentication.getName(), 10, 3600);
         ReportResponse response = reportService.submitReport(authentication.getName(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

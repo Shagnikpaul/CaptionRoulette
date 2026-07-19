@@ -19,4 +19,5 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Query("DELETE FROM Notification n WHERE n.referencePostId = :postId")
     void deleteByReferencePostId(@Param("postId") UUID postId);
 
+    long countByUserIdAndReadFalse(UUID userId);
 }

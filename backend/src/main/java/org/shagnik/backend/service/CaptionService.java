@@ -29,6 +29,7 @@ public class CaptionService {
     private final VoteRepository voteRepository;
     private final ReportRepository reportRepository;
     private final AuthService authService;
+    private final RedisService redisService;
 
 
     @Transactional
@@ -56,7 +57,7 @@ public class CaptionService {
         if (captionRepository.existsByPostAndAuthor(post, author)) {
             throw new DuplicateResourceException("You have already submitted a caption for this post");
         }
-
+        redisService.del(PostService.postCacheKey(postId));
         Caption caption = new Caption();
         caption.setPost(post);
         caption.setAuthor(author);
@@ -92,11 +93,13 @@ public class CaptionService {
         if (caption.getPost().getStatus() != PostStatus.OPEN) {
             throw new PostClosedException("Captions can only be deleted while the post is open");
         }
+        UUID postId = caption.getPost().getId();
 
         voteRepository.deleteByCaptionId(caption.getId());
         reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.CAPTION, caption.getId());
-
         captionRepository.delete(caption);
+
+        redisService.del(PostService.postCacheKey(postId));
     }
 
     public Page<CaptionResponse> getCaptions(UUID postId, String sort, int page, int size, Authentication authentication) {
