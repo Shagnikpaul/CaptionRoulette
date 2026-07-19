@@ -231,13 +231,13 @@ export function CreatePostDrawer() {
 
             <Drawer direction="right" onOpenChange={handleDrawerOpenChange}>
                 <DrawerTrigger asChild>
-                    <Button id="create-post-trigger-btn">
+                    <Button id="create-post-trigger-btn" size={'icon-lg'}>
                         <PlusCircle className="w-4 h-4" />
-                        Create Post
+                        
                     </Button>
                 </DrawerTrigger>
 
-                <DrawerContent className="flex flex-col gap-0 overflow-hidden">
+                <DrawerContent className="bg-black/80 border flex flex-col gap-0 overflow-hidden rounded-3xl m-5">
                     {/* ── Header ── */}
                     <DrawerHeader className="border-b border-border/50 pb-4">
                         <DrawerTitle>Create a Post</DrawerTitle>
@@ -250,7 +250,7 @@ export function CreatePostDrawer() {
                     <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-5">
                         {!file ? (
                             /* ── Empty / pick state ── */
-                            <Empty className="border border-dashed h-full min-h-[300px]">
+                            <Empty className="border bg-muted/40 h-full min-h-[300px]">
                                 <EmptyHeader>
                                     <EmptyMedia variant="icon">
                                         <ImageIcon className="size-4" />

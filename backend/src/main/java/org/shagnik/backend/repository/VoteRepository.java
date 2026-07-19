@@ -2,6 +2,7 @@ package org.shagnik.backend.repository;
 
 import org.shagnik.backend.entity.Vote;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -23,6 +24,14 @@ public interface VoteRepository extends JpaRepository<Vote, UUID> {
     List<Vote> findByCaptionIdInAndUserId(List<UUID> captionIds, UUID userId);
 
     long countByCaptionIdAndValue(UUID captionId, Short value);
+
+    @Modifying
+    @Query("DELETE FROM Vote v WHERE v.caption.id IN :captionIds")
+    void deleteByCaptionIdIn(@Param("captionIds") List<UUID> captionIds);
+
+    @Modifying
+    @Query("DELETE FROM Vote v WHERE v.caption.id = :captionId")
+    void deleteByCaptionId(@Param("captionId") UUID captionId);
 
     interface CaptionScoreProjection {
         UUID getCaptionId();

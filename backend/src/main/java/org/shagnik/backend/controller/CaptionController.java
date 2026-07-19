@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.shagnik.backend.dto.CaptionRequest;
 import org.shagnik.backend.dto.CaptionResponse;
 import org.shagnik.backend.service.CaptionService;
+import org.shagnik.backend.service.RateLimitService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ import java.util.UUID;
 public class CaptionController {
 
     private final CaptionService captionService;
-
+    private final RateLimitService rateLimitService;
     // POST /api/posts/{postId}/captions
     @PostMapping
     public ResponseEntity<CaptionResponse> submitCaption(
@@ -29,6 +30,7 @@ public class CaptionController {
             @Valid @RequestBody CaptionRequest request,
             @AuthenticationPrincipal UserDetails principal
     ) {
+        rateLimitService.enforce("caption-submit", principal.getUsername(), 5, 60);
         CaptionResponse response = captionService.submitCaption(postId, request, principal.getUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -44,5 +46,14 @@ public class CaptionController {
     ) {
         Page<CaptionResponse> captions = captionService.getCaptions(postId, sort, page, size, authentication);
         return ResponseEntity.ok(captions);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCaption(Authentication authentication, @PathVariable UUID id) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        captionService.deleteCaption(authentication.getName(), id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -27,6 +27,7 @@ public class VoteService {
     private final VoteRepository voteRepository;
     private final CaptionRepository captionRepository;
     private final AuthService authService;
+    private final RedisService redisService;
 
     @Transactional
     public VoteResponse vote(UUID captionId, VoteRequest request, Authentication authentication) {
@@ -76,7 +77,7 @@ public class VoteService {
 
         int netScore = voteRepository.sumScoreByCaptionId(captionId).intValue();
         Integer myVote = value == 0 ? null : value;
-
+        redisService.del(PostService.postCacheKey(post.getId()));
         return new VoteResponse(captionId, netScore, myVote);
     }
 }

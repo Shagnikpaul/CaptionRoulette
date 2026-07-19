@@ -54,67 +54,67 @@ function PostCard({ post }: { post: FeedItemResponse }) {
     const urgencyClass = getUrgencyClass(post.lockAt);
 
     return (
-        <Link to={`/posts/${post.id}`} className="block group">
-            <article className="relative rounded-2xl overflow-hidden border border-white/10 bg-black">
-                {/* ── Full-bleed background image ── */}
-                {!imgError ? (
-                    <img
-                        src={getImageUrl(post.imageKey)}
-                        alt={post.title ?? "Post image"}
-                        className="w-full h-auto object-cover max-h-[560px] transition-transform duration-500 group-hover:scale-[1.02]"
-                        onError={() => setImgError(true)}
-                    />
-                ) : (
-                    <div className="flex h-72 items-center justify-center bg-white/5 text-white/20">
-                        <ImageOff className="size-12" />
-                    </div>
-                )}
-
-                {/* Gradient scrim — top and bottom */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
-
-                {/* ── TOP: poster pill (left) + time-ago pill (right) ── */}
-                <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
-                    {/* Poster pill */}
-                    <div className="flex items-center gap-2 rounded-full bg-black/25 backdrop-blur-md border border-white/15 pl-1 pr-3 py-1">
-                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/60 to-pink-600/60 text-[10px] font-bold text-white uppercase">
-                            {post.posterUsername.charAt(0)}
-                        </div>
-                        <span className="text-xs font-semibold text-white leading-none">
-                            {post.posterUsername}
-                        </span>
-                    </div>
-
-                    {/* Time-ago pill */}
-                    <div className="rounded-full bg-black/25 backdrop-blur-md border border-white/15 px-2.5 py-1">
-                        <span className="text-[10px] font-medium text-white/60">{timeAgo(post.createdAt)}</span>
-                    </div>
-                </div>
-
-                {/* ── BOTTOM: urgency pill + tag pills ── */}
-                <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
-                    {/* Urgency pill */}
-                    <div className={`flex items-center gap-1.5 rounded-full bg-black/25 backdrop-blur-md border border-white/15 px-2.5 py-1 text-[11px] font-bold ${urgencyClass}`}>
-                        <Clock className="size-3" />
-                        <span>{getTimeRemaining(post.lockAt)}</span>
-                    </div>
-
-                    {/* Tags */}
-                    {post.tags.length > 0 && (
-                        <div className="flex flex-wrap justify-end gap-1">
-                            {post.tags.slice(0, 3).map((tag) => (
-                                <span
-                                    key={tag}
-                                    className="rounded-full bg-black/25 backdrop-blur-md border border-white/15 px-2 py-0.5 text-[10px] font-medium text-orange-300/90"
-                                >
-                                    #{tag}
-                                </span>
-                            ))}
+        <div className="flex flex-col gap-2 group">
+            {/* ── Card ── */}
+            <Link to={`/posts/${post.id}`} className="block">
+                <article className="relative rounded-2xl overflow-hidden border border-white/10 bg-black">
+                    {/* ── Full-bleed background image ── */}
+                    {!imgError ? (
+                        <img
+                            src={getImageUrl(post.imageKey)}
+                            alt={post.title ?? "Post image"}
+                            className="w-full h-auto object-cover max-h-[560px] transition-transform duration-500 group-hover:scale-[1.02]"
+                            onError={() => setImgError(true)}
+                        />
+                    ) : (
+                        <div className="flex h-72 items-center justify-center bg-white/5 text-white/20">
+                            <ImageOff className="size-12" />
                         </div>
                     )}
+
+                    {/* Gradient scrim — top */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent pointer-events-none" />
+
+                    {/* ── TOP: avatar + username + time-ago ── */}
+                    <div className="absolute top-0 left-0 right-0 p-3 flex items-center justify-between">
+                        <Link
+                            to={`/users/${post.posterUsername}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                        >
+                            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/60 to-pink-600/60 text-[11px] font-bold text-white uppercase">
+                                {post.posterUsername.charAt(0)}
+                            </div>
+                            <span className="text-sm font-semibold text-white leading-none">
+                                {post.posterUsername}
+                            </span>
+                        </Link>
+                        <span className="text-[11px] text-white/70">{timeAgo(post.createdAt)}</span>
+                    </div>
+                </article>
+            </Link>
+
+            {/* ── Below-image row: urgency (left) · tags (right) ── */}
+            <div className="flex items-center justify-between px-1">
+                <div className={`flex items-center gap-1.5 text-[11px] font-bold ${urgencyClass}`}>
+                    <Clock className="size-3" />
+                    <span>{getTimeRemaining(post.lockAt)}</span>
                 </div>
-            </article>
-        </Link>
+                {post.tags.length > 0 && (
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                        {post.tags.slice(0, 3).map((tag) => (
+                            <Link
+                                key={tag}
+                                to={`/tags/${tag}`}
+                                className="text-[11px] font-medium text-orange-300/70 hover:text-orange-200 transition-colors"
+                            >
+                                #{tag}
+                            </Link>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 
@@ -122,17 +122,15 @@ function PostCard({ post }: { post: FeedItemResponse }) {
 
 function SkeletonCard() {
     return (
-        <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden animate-pulse">
-            <div className="h-72 bg-white/10" />
-            {/* top pills */}
-            <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
-                <div className="h-7 w-28 rounded-full bg-white/10" />
-                <div className="h-6 w-14 rounded-full bg-white/10" />
+        <div className="flex flex-col gap-2 animate-pulse">
+            {/* card */}
+            <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                <div className="h-72 bg-white/10" />
             </div>
-            {/* bottom pills */}
-            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-                <div className="h-6 w-32 rounded-full bg-white/10" />
-                <div className="h-5 w-20 rounded-full bg-white/10" />
+            {/* below-image row */}
+            <div className="flex items-center justify-between px-1">
+                <div className="h-3 w-28 rounded-full bg-white/10" />
+                <div className="h-3 w-20 rounded-full bg-white/10" />
             </div>
         </div>
     );

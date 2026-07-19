@@ -196,3 +196,11 @@ export async function selectWinner(
   );
   return response.data;
 }
+
+export async function deletePost(id: string): Promise<void> {
+  await client.delete(`/api/posts/${id}`);
+}
+
+export async function deleteCaption(id: string): Promise<void> {
+  await client.delete(`/api/captions/${id}`);
+}

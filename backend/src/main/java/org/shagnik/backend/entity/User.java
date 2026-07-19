@@ -35,6 +35,9 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now(); // Default value in Java
 
+    @Column(name = "profile_image_key")
+    private String profileImageKey;
+
     // --- Getters, Setters, and Constructors ---
 
     public User() {}
@@ -59,4 +62,7 @@ public class User {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getProfileImageKey() { return profileImageKey; }
+    public void setProfileImageKey(String profileImageKey) { this.profileImageKey = profileImageKey; }
 }

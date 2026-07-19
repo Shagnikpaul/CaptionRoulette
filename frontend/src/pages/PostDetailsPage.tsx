@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
     getPostById,
@@ -8,6 +8,8 @@ import {
     submitCaption,
     voteOnCaption,
     selectWinner,
+    deletePost,
+    deleteCaption,
     type PostResponse,
     type CaptionResponse,
     type PagedResponse
@@ -27,8 +29,20 @@ import {
     Send,
     User,
     ThumbsUp,
-    ThumbsDown
+    ThumbsDown,
+    Trash2,
+    Flag
 } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { ReportDialog } from '@/components/ReportDialog';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +105,7 @@ function formatSettlementDate(iso: string | null): string {
 function PostDetailsPage() {
     const { postId } = useParams<{ postId: string }>();
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     // State management
     const [post, setPost] = useState<PostResponse | null>(null);
@@ -111,6 +126,16 @@ function PostDetailsPage() {
 
     // Track in-flight winner selection requests
     const [isSelectingWinner, setIsSelectingWinner] = useState<string | null>(null);
+
+    // Deletion states
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeletingPost, setIsDeletingPost] = useState(false);
+    const [captionToDelete, setCaptionToDelete] = useState<CaptionResponse | null>(null);
+    const [isDeletingCaption, setIsDeletingCaption] = useState(false);
+
+    // Reporting states
+    const [isReportPostOpen, setIsReportPostOpen] = useState(false);
+    const [captionToReport, setCaptionToReport] = useState<CaptionResponse | null>(null);
 
     // Fetch handlers
     const fetchPost = useCallback(async (id: string) => {
@@ -305,6 +330,46 @@ function PostDetailsPage() {
         }
     };
 
+    const handleDeletePost = async () => {
+        if (!postId) return;
+        setIsDeletingPost(true);
+        try {
+            await deletePost(postId);
+            toast.success('Post deleted successfully');
+            setIsDeleteDialogOpen(false);
+            navigate('/');
+        } catch (err) {
+            const parsed = parseApiError(err);
+            toast.error('Failed to delete post', {
+                description: parsed.message
+            });
+        } finally {
+            setIsDeletingPost(false);
+        }
+    };
+
+    const handleDeleteCaption = async () => {
+        if (!captionToDelete || !postId) return;
+        setIsDeletingCaption(true);
+        try {
+            await deleteCaption(captionToDelete.id);
+            toast.success('Caption deleted successfully');
+            setCaptionToDelete(null);
+            fetchCaptions(postId, captionsSort, captionsPage);
+        } catch (err: any) {
+            const parsed = parseApiError(err);
+            if (err.response?.status === 409) {
+                toast.error('Post is no longer OPEN. You can no longer delete this caption; the post has closed.');
+            } else {
+                toast.error('Failed to delete caption', {
+                    description: parsed.message
+                });
+            }
+        } finally {
+            setIsDeletingCaption(false);
+        }
+    };
+
     // Auto-refresh when voting deadline is reached to trigger backend lazy settlement
     useEffect(() => {
         if (!post || post.status !== 'OPEN' || !postId) return;
@@ -381,10 +446,10 @@ function PostDetailsPage() {
             {/* Layout wrapper */}
             <main className="w-full max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
-                {/* ── Left Column: Responsive Image + Overlay Pills ── */}
-                <section className="lg:col-span-7 flex flex-col gap-4">
-                    {/* Image Viewport matching aspect ratio of original image up to desktop viewport height */}
-                    <div className="relative w-full rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center overflow-hidden group select-none">
+                {/* ── Left Column: Image + Below-image Metadata ── */}
+                <section className="lg:col-span-7 flex flex-col gap-3">
+                    {/* Image */}
+                    <div className="w-full rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center overflow-hidden select-none relative group">
                         {!imgError ? (
                             <img
                                 src={getImageUrl(post.imageKey)}
@@ -397,63 +462,82 @@ function PostDetailsPage() {
                                 <ImageOff className="size-16" />
                             </div>
                         )}
+                        {!isPoster && (
+                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <Button
+                                    id="report-post-hover-btn"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setIsReportPostOpen(true)}
+                                    className="bg-black/60 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl flex items-center gap-1.5 backdrop-blur-sm text-white text-xs py-1 px-3"
+                                    title="Report post"
+                                >
+                                    <Flag className="size-3.5" />
+                                    <span>Report Post</span>
+                                </Button>
+                            </div>
+                        )}
+                    </div>
 
-                        {/* Title & Metadata overlay (no card background) */}
-                        <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-2 transition-all duration-300 ease-in-out opacity-100 transform translate-y-0 group-hover:opacity-0 group-hover:translate-y-2 group-hover:pointer-events-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                            {post.title && (
-                                <h2 className="text-base font-bold text-white leading-snug drop-shadow-md">
-                                    {post.title}
-                                </h2>
-                            )}
+                    {/* ── Below-image metadata ── */}
+                    <div className="flex flex-col gap-2 px-1">
+                        {/* Title */}
+                        {post.title && (
+                            <h2 className="text-base font-bold text-white leading-snug">
+                                {post.title}
+                            </h2>
+                        )}
 
-                            <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {/* Poster Pill */}
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/20 text-[11px] font-medium text-white shadow-sm">
-                                        
-                                        <span className="text-white/60">posted by</span>
-                                        <span className="font-semibold text-white">{post.posterUsername}</span>
-                                    </div>
-
-                                    {/* Urgency status / Settlement date Pill */}
-                                    {isSettled ? (
-                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-yellow-500/20 text-[11px] font-semibold text-yellow-400 shadow-sm">
-                                            <Trophy className="size-3 text-yellow-400" />
-                                            <span>Settled {formatSettlementDate(post.settledAt)}</span>
-                                        </div>
-                                    ) : (
-                                        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${urgencyClass}`}>
-                                            <Clock className="size-3" />
-                                            <span>{getTimeRemaining(post.lockAt)}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Status Pill */}
-                                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/10 backdrop-blur-lg border border-white/20 text-[11px] font-semibold shadow-sm ${isSettled ? 'text-yellow-400 font-bold' : 'text-emerald-400 font-bold'}`}>
-                                        {isSettled ? (
-                                            <>
-                                                <Trophy className="size-3" />
-                                                <span>Settled</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Flame className="size-3" />
-                                                <span>Open</span>
-                                            </>
-                                        )}
-                                    </div>
+                        {/* Row: avatar + poster (left) · status + time (right) */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                            {/* Poster avatar link */}
+                            <Link
+                                to={`/users/${post.posterUsername}`}
+                                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                            >
+                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/60 to-pink-600/60 text-[11px] font-bold text-white uppercase">
+                                    {post.posterUsername.charAt(0)}
                                 </div>
+                                <span className="text-sm font-semibold text-white/90 leading-none">
+                                    {post.posterUsername}
+                                </span>
+                            </Link>
 
-                                {/* Tags section (right aligned, plain bold text, no pills) */}
-                                {post.tags && post.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 text-[11px] font-bold text-orange-400 drop-shadow-md select-text">
-                                        {post.tags.map((tag) => (
-                                            <span key={tag}>#{tag}</span>
-                                        ))}
+                            {/* Status + urgency/settled */}
+                            <div className="flex items-center gap-2">
+                                {isSettled ? (
+                                    <div className="flex items-center gap-1 text-[11px] font-semibold text-yellow-400">
+                                        <Trophy className="size-3" />
+                                        <span>Settled {formatSettlementDate(post.settledAt)}</span>
+                                    </div>
+                                ) : (
+                                    <div className={`flex items-center gap-1 text-[11px] font-semibold ${urgencyClass}`}>
+                                        <Clock className="size-3" />
+                                        <span>{getTimeRemaining(post.lockAt)}</span>
                                     </div>
                                 )}
+                                <span className="text-white/20">·</span>
+                                <div className={`flex items-center gap-1 text-[11px] font-bold ${isSettled ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                                    {isSettled ? <Trophy className="size-3" /> : <Flame className="size-3" />}
+                                    <span>{isSettled ? 'Settled' : 'Open'}</span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Tags */}
+                        {post.tags && post.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {post.tags.map((tag) => (
+                                    <Link
+                                        key={tag}
+                                        to={`/tags/${tag}`}
+                                        className="text-[11px] font-bold text-orange-400/80 hover:text-orange-300 transition-colors"
+                                    >
+                                        #{tag}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -462,9 +546,59 @@ function PostDetailsPage() {
                     <div className="border border-white/10 bg-white/[0.02] rounded-2xl p-6 flex flex-col gap-6 shadow-2xl backdrop-blur-sm">
                         
                         {/* Title block */}
-                        <div>
-                            <h2 className="text-lg font-bold text-white tracking-tight">Post Captions</h2>
-                            <p className="text-xs text-white/50 mt-1">Submit your creative lines or vote for your favorites.</p>
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-white tracking-tight">Post Captions</h2>
+                                <p className="text-xs text-white/50 mt-1">Submit your creative lines or vote for your favorites.</p>
+                            </div>
+                            {isPoster && (
+                                <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button
+                                            id="delete-post-trigger-btn"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-white/40 hover:text-red-500 hover:bg-red-500/10 rounded-full h-8 w-8 shrink-0 ml-4"
+                                            title="Delete post"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="bg-black/90 border border-white/10 text-white rounded-2xl p-6">
+                                        <DialogHeader>
+                                            <DialogTitle className="text-white font-bold">Delete Post</DialogTitle>
+                                            <DialogDescription className="text-white/60">
+                                                Are you sure you want to delete this post? This action is permanent and cannot be undone. All captions, votes, and reports associated with this post will also be deleted.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter className="flex justify-end gap-2 pt-2">
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setIsDeleteDialogOpen(false)}
+                                                disabled={isDeletingPost}
+                                                className="border-white/10 text-white hover:bg-white/5"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={handleDeletePost}
+                                                disabled={isDeletingPost}
+                                                className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                                            >
+                                                {isDeletingPost ? (
+                                                    <>
+                                                        <Loader2 className="mr-1.5 size-4 animate-spin" />
+                                                        Deleting...
+                                                    </>
+                                                ) : (
+                                                    'Delete Post'
+                                                )}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </div>
 
                         {/* Winner Announcement Section for Settled Posts */}
@@ -623,7 +757,7 @@ function PostDetailsPage() {
                                     return (
                                         <div
                                             key={caption.id}
-                                            className={`p-4 rounded-xl border transition-all ${
+                                            className={`group relative p-4 rounded-xl border transition-all ${
                                                 isWinner
                                                     ? 'border-yellow-500/30 bg-yellow-500/5 shadow-[0_0_15px_rgba(234,179,8,0.05)]'
                                                     : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.02]'
@@ -694,7 +828,34 @@ function PostDetailsPage() {
                                                                 <span className="text-[9px] bg-white/10 text-white/70 px-1 rounded">You</span>
                                                             )}
                                                         </div>
-                                                        <span className="text-[10px] text-white/30 font-medium">
+
+                                                        {/* Hover Action buttons container */}
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-auto mr-2">
+                                                            {isAuthor && isOpen && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => setCaptionToDelete(caption)}
+                                                                    className="text-white/40 hover:text-red-500 hover:bg-red-500/10 rounded-full h-7 w-7"
+                                                                    title="Delete caption"
+                                                                >
+                                                                    <Trash2 className="size-3.5" />
+                                                                </Button>
+                                                            )}
+                                                            {!isAuthor && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => setCaptionToReport(caption)}
+                                                                    className="text-white/40 hover:text-red-500 hover:bg-red-500/10 rounded-full h-7 w-7"
+                                                                    title="Report caption"
+                                                                >
+                                                                    <Flag className="size-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+
+                                                        <span className="text-[10px] text-white/30 font-medium shrink-0">
                                                             {timeAgo(caption.createdAt)}
                                                         </span>
                                                     </div>
@@ -775,6 +936,61 @@ function PostDetailsPage() {
                 </section>
 
             </main>
+
+            {/* Caption Deletion Dialog */}
+            <Dialog open={captionToDelete !== null} onOpenChange={(open) => { if (!open) setCaptionToDelete(null); }}>
+                <DialogContent className="bg-black/90 border border-white/10 text-white rounded-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-white font-bold">Delete Caption</DialogTitle>
+                        <DialogDescription className="text-white/60">
+                            Are you sure you want to delete this caption? This action is permanent and cannot be undone. All votes and reports associated with this caption will also be deleted.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex justify-end gap-2 pt-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setCaptionToDelete(null)}
+                            disabled={isDeletingCaption}
+                            className="border-white/10 text-white hover:bg-white/5"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteCaption}
+                            disabled={isDeletingCaption}
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                        >
+                            {isDeletingCaption ? (
+                                <>
+                                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                'Delete Caption'
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Post Report Dialog */}
+            <ReportDialog
+                targetType="POST"
+                targetId={post.id}
+                isOpen={isReportPostOpen}
+                onOpenChange={setIsReportPostOpen}
+            />
+
+            {/* Caption Report Dialog */}
+            {captionToReport && (
+                <ReportDialog
+                    targetType="CAPTION"
+                    targetId={captionToReport.id}
+                    isOpen={captionToReport !== null}
+                    onOpenChange={(open) => { if (!open) setCaptionToReport(null); }}
+                />
+            )}
         </div>
     );
 }
