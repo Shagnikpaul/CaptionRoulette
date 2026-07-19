@@ -25,6 +25,17 @@ public class Post {
     @Column(name = "image_key", nullable = false)
     private String imageKey;
 
+    @Column(name = "processed_image_key")
+    private String processedImageKey;
+
+    @Column(name = "thumbnail_key")
+    private String thumbnailKey;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "processing_status", nullable = false, columnDefinition = "processing_status")
+    private ProcessingStatus processingStatus = ProcessingStatus.PROCESSING;
+
     @Column(name = "title")
     private String title;
 
@@ -71,6 +82,15 @@ public class Post {
 
     public String getImageKey() { return imageKey; }
     public void setImageKey(String imageKey) { this.imageKey = imageKey; }
+
+    public String getProcessedImageKey() { return processedImageKey; }
+    public void setProcessedImageKey(String processedImageKey) { this.processedImageKey = processedImageKey; }
+
+    public String getThumbnailKey() { return thumbnailKey; }
+    public void setThumbnailKey(String thumbnailKey) { this.thumbnailKey = thumbnailKey; }
+
+    public ProcessingStatus getProcessingStatus() { return processingStatus; }
+    public void setProcessingStatus(ProcessingStatus processingStatus) { this.processingStatus = processingStatus; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

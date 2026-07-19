@@ -62,10 +62,14 @@ export function Navbar() {
             <>
               <CreatePostDrawer />
               <NotificationsDrawer />
-              <div className="flex items-center gap-2 text-sm text-gray-300">
+              <Link
+                to={`/users/${user?.username}`}
+                className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+                id="nav-profile-link"
+              >
                 <UserIcon className="w-4 h-4" />
                 <span>{user?.username}</span>
-              </div>
+              </Link>
 
               <Button
                 variant="destructive"

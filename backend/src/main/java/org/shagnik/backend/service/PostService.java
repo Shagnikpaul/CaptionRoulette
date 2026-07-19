@@ -17,8 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -57,7 +56,10 @@ public class PostService {
     @Transactional
     public PostResponse createPost(String username, CreatePostRequest request) {
         User poster = authService.getCurrentUser(username);
-        validateImageKey(request.getImageKey());
+        // NOTE: We intentionally do NOT validate the S3 key here.
+        // The frontend creates the post row first, then uploads the image to S3.
+        // This guarantees the Lambda worker (triggered by the S3 event) always
+        // finds an existing post row and can update the optimised image key.
         Set<Tag> tags = resolveTags(request.getTags());
         LocalDateTime now = LocalDateTime.now();
 
@@ -66,6 +68,7 @@ public class PostService {
         post.setImageKey(request.getImageKey());
         post.setTitle(request.getTitle());
         post.setStatus(PostStatus.OPEN);
+        post.setProcessingStatus(ProcessingStatus.PROCESSING);
         post.setCreatedAt(now);
         post.setLockAt(now.plusHours(LOCK_DURATION_HOURS));
         post.setTags(tags);
@@ -74,16 +77,7 @@ public class PostService {
         return toPostResponse(saved);
     }
 
-    private void validateImageKey(String imageKey) {
-        try {
-            s3Client.headObject(HeadObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(imageKey)
-                    .build());
-        } catch (NoSuchKeyException ex) {
-            throw new InvalidImageKeyException("Image key does not exist: " + imageKey);
-        }
-    }
+
 
     private Set<Tag> resolveTags(List<String> rawTags) {
         if (rawTags == null || rawTags.isEmpty()) {
@@ -169,7 +163,6 @@ public class PostService {
         return new PageImpl<>(items, idPage.getPageable(), idPage.getTotalElements());
     }
 
-    // ============ PHASE 5 (fixed): Post details ============
 
     @Transactional
     public PostResponse getPostById(UUID id) {
@@ -199,7 +192,6 @@ public class PostService {
         return toPostResponse(freshDto);
     }
 
-    // ============ Shared cache helpers ============
 
     private CachedPost tryDeserialize(String json, UUID postId) {
         if (json == null) return null;
@@ -252,7 +244,7 @@ public class PostService {
         reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.POST, postId);
 
         postRepository.delete(post);
-        redisService.del(postCacheKey(postId)); // Phase 8: post no longer exists, evict
+        redisService.del(postCacheKey(postId)); 
     }
 
     // ============ Mappers ============
@@ -264,11 +256,18 @@ public class PostService {
                 .sorted()
                 .toList();
 
+        // Resolve once here — mappers consume the result directly
+        String detailImageKey = post.getProcessedImageKey() != null
+                ? post.getProcessedImageKey() : post.getImageKey();
+        String feedImageKey = post.getThumbnailKey() != null
+                ? post.getThumbnailKey() : post.getImageKey();
+
         return new CachedPost(
                 post.getId(),
                 post.getPoster().getId(),
                 post.getPoster().getUsername(),
-                post.getImageKey(),
+                detailImageKey,
+                feedImageKey,
                 post.getTitle(),
                 post.getStatus(),
                 post.getCreatedAt(),
@@ -283,7 +282,7 @@ public class PostService {
 
     private PostResponse toPostResponse(CachedPost dto) {
         return new PostResponse(
-                dto.id(), dto.posterId(), dto.posterUsername(), dto.imageKey(), dto.title(),
+                dto.id(), dto.posterId(), dto.posterUsername(), dto.detailImageKey(), dto.title(),
                 dto.status(), dto.createdAt(), dto.lockAt(), dto.settledAt(),
                 dto.winningCaptionId(), dto.winningCaptionText(), dto.winningCaptionAuthor(), dto.tags()
         );
@@ -299,7 +298,7 @@ public class PostService {
     // from your actual constructor, so this mapper deliberately omits it.
     private FeedItemResponse toFeedItemResponse(CachedPost dto) {
         return new FeedItemResponse(
-                dto.id(), dto.posterUsername(), dto.imageKey(), dto.title(),
+                dto.id(), dto.posterUsername(), dto.feedImageKey(), dto.title(),
                 dto.status(), dto.createdAt(), dto.lockAt(), dto.settledAt(),
                 dto.winningCaptionId(), dto.winningCaptionText(), dto.winningCaptionAuthor(), dto.tags()
         );
