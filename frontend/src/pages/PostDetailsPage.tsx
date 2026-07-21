@@ -239,6 +239,11 @@ function PostDetailsPage() {
 
     // ── Vote handler with optimistic update + rollback ────────────────────────
     const handleVote = async (caption: CaptionResponse, value: 1 | -1 | 0) => {
+        if (!user) {
+            toast.error('Log in to vote', { description: 'Please sign in to vote on captions.' });
+            navigate('/login');
+            return;
+        }
         if (!captionsData) return;
         if (votingCaptionIds.has(caption.id)) return;
 
@@ -443,9 +448,8 @@ function PostDetailsPage() {
     // - post is settled
     // - user is the caption's author
     const canVoteOnCaption = (caption: CaptionResponse): boolean => {
-        if (!user) return false;
         if (isSettled) return false;
-        if (caption.authorUsername === user.username) return false;
+        if (user && caption.authorUsername === user.username) return false;
         return true;
     };
 
@@ -540,7 +544,14 @@ function PostDetailsPage() {
                                     id="report-post-hover-btn"
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => setIsReportPostOpen(true)}
+                                    onClick={() => {
+                                        if (!user) {
+                                            toast.error('Log in to report', { description: 'Please sign in to report content.' });
+                                            navigate('/login');
+                                            return;
+                                        }
+                                        setIsReportPostOpen(true);
+                                    }}
                                     className="bg-black/60 hover:bg-red-600 hover:text-white border border-white/10 rounded-xl flex items-center gap-1.5 backdrop-blur-sm text-white text-xs py-1 px-3"
                                     title="Report post"
                                 >
@@ -697,7 +708,15 @@ function PostDetailsPage() {
                         )}
 
                         {/* Submission form block */}
-                        {shouldDisableForm ? (
+                        {!user ? (
+                            <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 p-4 flex flex-col items-center gap-2 text-center">
+                                <p className="text-sm font-semibold text-white">Want to submit a caption?</p>
+                                <p className="text-xs text-white/60">Log in or create an account to post captions and vote on others.</p>
+                                <Button asChild size="sm" className="mt-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold">
+                                    <Link to="/login">Log In to Submit</Link>
+                                </Button>
+                            </div>
+                        ) : shouldDisableForm ? (
                             <div className="rounded-xl border border-white/5 bg-white/[0.01] p-4 flex items-start gap-3 text-white/50 text-xs leading-relaxed">
                                 {isPoster && (
                                     <>
@@ -918,7 +937,14 @@ function PostDetailsPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    onClick={() => setCaptionToReport(caption)}
+                                                                    onClick={() => {
+                                                                        if (!user) {
+                                                                            toast.error('Log in to report', { description: 'Please sign in to report content.' });
+                                                                            navigate('/login');
+                                                                            return;
+                                                                        }
+                                                                        setCaptionToReport(caption);
+                                                                    }}
                                                                     className="text-white/40 hover:text-red-500 hover:bg-red-500/10 rounded-full h-7 w-7"
                                                                     title="Report caption"
                                                                 >

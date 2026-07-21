@@ -25,29 +25,19 @@ const router = createBrowserRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      {
-        path: '',
-        element: <ProtectedRoute />,
-        children: [
-          {
-            index: true,
-            element: <HomePage />
-          },
-          {
-            path: 'settled',
-            element: <SettledPage />
-          },
-          {
-            path: 'posts/:postId',
-            element: <PostDetailsPage />
-          },
-          {
-            path: 'notifications',
-            element: <NotificationsPage />
-          },
-        ]
-      },
       // Public routes — no auth required
+      {
+        index: true,
+        element: <HomePage />
+      },
+      {
+        path: 'settled',
+        element: <SettledPage />
+      },
+      {
+        path: 'posts/:postId',
+        element: <PostDetailsPage />
+      },
       {
         path: 'tags/:tagName',
         element: <TagPage />
@@ -55,6 +45,17 @@ const router = createBrowserRouter([
       {
         path: 'users/:username',
         element: <UserProfilePage />
+      },
+      // Protected routes — auth required
+      {
+        path: '',
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: 'notifications',
+            element: <NotificationsPage />
+          },
+        ]
       },
     ]
   }
