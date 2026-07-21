@@ -144,7 +144,7 @@ export function SettledPage() {
         setIsLoading(true);
         try {
             const data = await getSettledPosts(p, PAGE_SIZE);
-            setPosts(data.content);
+            setPosts(data.content.filter((post) => !post.shadowBanned));
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements);
             setIsFirst(data.first);

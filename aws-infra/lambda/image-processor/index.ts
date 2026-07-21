@@ -1,12 +1,13 @@
 import { SQSHandler, SQSBatchResponse, SQSBatchItemFailure } from "aws-lambda";
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 
 import sharp from "sharp";
 import { Client } from "pg";
 
 const s3 = new S3Client({});
-
+const sqsClient = new SQSClient({});
 interface S3EventRecord {
   s3: {
     bucket: { name: string };
@@ -20,6 +21,13 @@ interface OutputKeys {
   processedKey: string;
   thumbnailKey: string;
 }
+
+interface PostModerationInfo {
+  postId: string;
+  title: string | null;
+  tags: string[];
+}
+
 
 
 const secretsClient = new SecretsManagerClient({});
@@ -98,7 +106,6 @@ async function markStatus(
     let result;
 
     if (status === "READY") {
-      console.log(`[markStatus] Executing READY update query...`);
       result = await client.query(
         `UPDATE posts
          SET processed_image_key = $1,
@@ -108,7 +115,6 @@ async function markStatus(
         [processedKey, thumbnailKey, "READY", imageKey]
       );
     } else {
-      console.log(`[markStatus] Executing FAILED update query...`);
       result = await client.query(
         `UPDATE posts
          SET processing_status = $1::processing_status
@@ -155,8 +161,7 @@ async function processImage(
 
   const thumbnailBuffer = await sharp(originalBuffer)
     .rotate()
-    .resize({ width: 300, height: 300, fit: "cover" })
-    .webp({ quality: 75 })
+    .webp({ quality: 60 })
     .toBuffer();
 
   // Upload both outputs
@@ -181,6 +186,55 @@ async function processImage(
 
   // Update DB
   await markStatus(dbClient, imageKey, "READY", processedKey, thumbnailKey);
+
+  const postInfo = await fetchPostForModeration(dbClient, imageKey);
+  await publishModerationJob(postInfo.postId, processedKey, postInfo.title, postInfo.tags);
+}
+
+async function fetchPostForModeration(
+  client: Client,
+  imageKey: string
+): Promise<PostModerationInfo> {
+  const result = await client.query(
+    `SELECT p.id AS post_id, p.title,
+            COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
+     FROM posts p
+     LEFT JOIN post_tags pt ON pt.post_id = p.id
+     LEFT JOIN tags t ON t.id = pt.tag_id
+     WHERE p.image_key = $1
+     GROUP BY p.id, p.title`,
+    [imageKey]
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error(`[fetchPostForModeration] No post found for image_key=${imageKey}`);
+  }
+
+  const row = result.rows[0];
+  return {
+    postId: row.post_id,
+    title: row.title,
+    tags: row.tags,
+  };
+}
+
+async function publishModerationJob(
+  postId: string,
+  processedImageKey: string,
+  title: string | null,
+  tags: string[]
+) {
+  await sqsClient.send(
+    new SendMessageCommand({
+      QueueUrl: process.env.MODERATION_QUEUE_URL,
+      MessageBody: JSON.stringify({
+        postId,
+        processedImageKey,
+        title,
+        tags,
+      }),
+    })
+  );
 }
 
 // ---------------------------------------------------------------------
