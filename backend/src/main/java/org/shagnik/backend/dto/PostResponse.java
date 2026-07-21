@@ -1,5 +1,6 @@
 package org.shagnik.backend.dto;
 
+import org.shagnik.backend.entity.AiModerationStatus;
 import org.shagnik.backend.entity.PostStatus;
 
 import java.time.LocalDateTime;
@@ -21,14 +22,19 @@ public class PostResponse {
     private String winningCaptionText;
     private String winningCaptionAuthor;
     private List<String> tags;
+    private AiModerationStatus aiModerationStatus;
+    private boolean shadowBanned;
+    private String aiFlagReason;
 
     public PostResponse() {}
 
     public PostResponse(UUID id, UUID posterId, String posterUsername, String imageKey,
                         String title, PostStatus status, LocalDateTime createdAt,
                         LocalDateTime lockAt, LocalDateTime settledAt,
-                        UUID winningCaptionId,String winningCaptionText,
-                        String winningCaptionAuthor, List<String> tags) {
+                        UUID winningCaptionId, String winningCaptionText,
+                        String winningCaptionAuthor, List<String> tags,
+                        AiModerationStatus aiModerationStatus, boolean shadowBanned,
+                        String aiFlagReason) {
         this.id = id;
         this.posterId = posterId;
         this.posterUsername = posterUsername;
@@ -42,6 +48,9 @@ public class PostResponse {
         this.winningCaptionText = winningCaptionText;
         this.winningCaptionAuthor = winningCaptionAuthor;
         this.tags = tags;
+        this.aiModerationStatus = aiModerationStatus;
+        this.shadowBanned = shadowBanned;
+        this.aiFlagReason = aiFlagReason;
     }
 
     public UUID getId() { return id; }
@@ -57,4 +66,7 @@ public class PostResponse {
     public String getWinningCaptionText() { return winningCaptionText; }
     public String getWinningCaptionAuthor() { return winningCaptionAuthor; }
     public List<String> getTags() { return tags; }
+    public AiModerationStatus getAiModerationStatus() { return aiModerationStatus; }
+    public boolean isShadowBanned() { return shadowBanned; }
+    public String getAiFlagReason() { return aiFlagReason; }
 }

@@ -7,7 +7,9 @@ import {
     AlertCircle,
     Calendar,
     User,
+    EyeOff,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { getUserProfile, getUserPosts, type UserProfile } from "@/api/search";
 import { getImageUrl, type FeedItemResponse } from "@/api/posts";
 import { Button } from "@/components/ui/button";
@@ -110,6 +112,17 @@ function GridThumbnail({ post }: { post: FeedItemResponse }) {
             {post.status === "SETTLED" && (
                 <div className="absolute top-2 right-2 size-2 rounded-full bg-yellow-400 ring-1 ring-black/50" />
             )}
+
+            {/* Shadow banned badge (visible to post owner) */}
+            {post.shadowBanned && (
+                <div
+                    className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-red-950/85 border border-red-500/50 px-1.5 py-0.5 text-[9px] font-bold text-red-300 backdrop-blur-sm shadow-md"
+                    title="Shadow Banned: Only visible to you on your profile page"
+                >
+                    <EyeOff className="size-2.5 text-red-400" />
+                    <span>Shadow Banned</span>
+                </div>
+            )}
         </Link>
     );
 }
@@ -135,6 +148,11 @@ const PAGE_SIZE = 12; // 3-col grid, 4 rows
 
 export function UserProfilePage() {
     const { username = "" } = useParams<{ username: string }>();
+    const { user } = useAuth();
+
+    const isOwnProfile = Boolean(
+        user?.username && username && user.username.toLowerCase() === username.toLowerCase()
+    );
 
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [posts, setPosts] = useState<FeedItemResponse[]>([]);
@@ -169,7 +187,11 @@ export function UserProfilePage() {
             setPostsLoading(true);
             try {
                 const data = await getUserPosts(username, p, PAGE_SIZE);
-                setPosts(data.content);
+                // Shadow-banned posts are only visible to the profile owner
+                const visiblePosts = isOwnProfile
+                    ? data.content
+                    : data.content.filter((post) => !post.shadowBanned);
+                setPosts(visiblePosts);
                 setTotalPages(data.totalPages);
                 setTotalElements(data.totalElements);
                 setIsFirst(data.first);
@@ -180,7 +202,7 @@ export function UserProfilePage() {
                 setPostsLoading(false);
             }
         },
-        [username]
+        [username, isOwnProfile]
     );
 
     useEffect(() => {

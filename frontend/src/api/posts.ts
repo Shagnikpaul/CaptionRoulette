@@ -8,21 +8,7 @@ export interface CreatePostRequest {
   tags?: string[];
 }
 
-export interface PostResponse {
-  id: string;
-  posterId: string;
-  posterUsername: string;
-  imageKey: string;
-  title: string | null;
-  status: 'OPEN' | 'SETTLED';
-  createdAt: string;
-  lockAt: string;
-  settledAt: string | null;
-  winningCaptionId: string | null;
-  winningCaptionText: string | null;
-  winningCaptionAuthor: string | null;
-  tags: string[];
-}
+export type AiModerationStatus = 'PENDING' | 'SAFE' | 'FLAGGED' | 'FAILED';
 
 export interface FeedItemResponse {
   id: string;
@@ -37,6 +23,15 @@ export interface FeedItemResponse {
   winningCaptionText: string | null;
   winningCaptionAuthor: string | null;
   tags: string[];
+
+  // --- NEW MODERATION FIELDS ---
+  aiModerationStatus: AiModerationStatus;
+  shadowBanned: boolean;
+  aiFlagReason: string | null;
+}
+
+export interface PostResponse extends FeedItemResponse {
+  posterId: string;
 }
 
 export interface PagedResponse<T> {

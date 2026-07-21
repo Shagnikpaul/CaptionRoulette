@@ -12,13 +12,15 @@ import { Duration } from "aws-cdk-lib";
 
 interface ImageProcessingStackProps extends cdk.StackProps {
   bucket: s3.IBucket;
+  moderationQueue: sqs.IQueue;
 }
 
 export class ImageProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ImageProcessingStackProps) {
     super(scope, id, props);
 
-    const { bucket } = props;
+    const { bucket, moderationQueue } = props;
+
 
     // -------------------------------------------------------------------
     // DLQ + main queue
@@ -91,6 +93,8 @@ export class ImageProcessingStack extends cdk.Stack {
     );
     dbSecret.grantRead(imageProcessorFn);
     imageProcessorFn.addEnvironment("DB_SECRET_ARN", dbSecret.secretArn);
+    imageProcessorFn.addEnvironment("MODERATION_QUEUE_URL", moderationQueue.queueUrl);
+    moderationQueue.grantSendMessages(imageProcessorFn);
 
     // CloudWatch Logs permissions are already granted automatically
     // via NodejsFunction's default execution role — no extra policy needed.

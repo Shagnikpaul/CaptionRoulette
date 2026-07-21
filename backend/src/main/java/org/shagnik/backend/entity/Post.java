@@ -65,6 +65,17 @@ public class Post {
     )
     private Set<Tag> tags = new HashSet<>();
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "ai_moderation_status", nullable = false, columnDefinition = "ai_moderation_status")
+    private AiModerationStatus aiModerationStatus = AiModerationStatus.PENDING;
+
+    @Column(name = "shadow_banned", nullable = false)
+    private boolean shadowBanned = false;
+
+    @Column(name = "ai_flag_reason")
+    private String aiFlagReason;
+
     public Post() {}
 
     public void addTag(Tag tag) {
@@ -117,4 +128,13 @@ public class Post {
 
     public Set<Tag> getTags() { return tags; }
     public void setTags(Set<Tag> tags) { this.tags = tags; }
+
+    public AiModerationStatus getAiModerationStatus() { return aiModerationStatus; }
+    public void setAiModerationStatus(AiModerationStatus aiModerationStatus) { this.aiModerationStatus = aiModerationStatus; }
+
+    public boolean isShadowBanned() { return shadowBanned; }
+    public void setShadowBanned(boolean shadowBanned) { this.shadowBanned = shadowBanned; }
+
+    public String getAiFlagReason() { return aiFlagReason; }
+    public void setAiFlagReason(String aiFlagReason) { this.aiFlagReason = aiFlagReason; }
 }

@@ -1,5 +1,6 @@
 package org.shagnik.backend.dto;
 
+import org.shagnik.backend.entity.AiModerationStatus;
 import org.shagnik.backend.entity.PostStatus;
 
 import java.time.LocalDateTime;
@@ -21,5 +22,8 @@ public record CachedPost(
         UUID winningCaptionId,
         String winningCaptionText,
         String winningCaptionAuthor,
-        List<String> tags
+        List<String> tags,
+        AiModerationStatus aiModerationStatus,
+        boolean shadowBanned,
+        String aiFlagReason
 ) {}

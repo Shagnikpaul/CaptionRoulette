@@ -276,7 +276,10 @@ public class PostService {
                 winner != null ? winner.getId() : null,
                 winner != null ? winner.getText() : null,
                 winner != null ? winner.getAuthor().getUsername() : null,
-                tagNames
+                tagNames,
+                post.getAiModerationStatus(),
+                post.isShadowBanned(),
+                post.getAiFlagReason()
         );
     }
 
@@ -284,7 +287,8 @@ public class PostService {
         return new PostResponse(
                 dto.id(), dto.posterId(), dto.posterUsername(), dto.detailImageKey(), dto.title(),
                 dto.status(), dto.createdAt(), dto.lockAt(), dto.settledAt(),
-                dto.winningCaptionId(), dto.winningCaptionText(), dto.winningCaptionAuthor(), dto.tags()
+                dto.winningCaptionId(), dto.winningCaptionText(), dto.winningCaptionAuthor(), dto.tags(),
+                dto.aiModerationStatus(), dto.shadowBanned(), dto.aiFlagReason()
         );
     }
 
@@ -300,7 +304,8 @@ public class PostService {
         return new FeedItemResponse(
                 dto.id(), dto.posterUsername(), dto.feedImageKey(), dto.title(),
                 dto.status(), dto.createdAt(), dto.lockAt(), dto.settledAt(),
-                dto.winningCaptionId(), dto.winningCaptionText(), dto.winningCaptionAuthor(), dto.tags()
+                dto.winningCaptionId(), dto.winningCaptionText(), dto.winningCaptionAuthor(), dto.tags(),
+                dto.aiModerationStatus(), dto.shadowBanned(), dto.aiFlagReason()
         );
     }
 

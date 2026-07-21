@@ -166,7 +166,7 @@ export function TagPage() {
             setNotFound(false);
             try {
                 const data = await getTagPosts(tagName, p, PAGE_SIZE);
-                setPosts(data.content);
+                setPosts(data.content.filter((post) => !post.shadowBanned));
                 setTotalPages(data.totalPages);
                 setTotalElements(data.totalElements);
                 setIsFirst(data.first);

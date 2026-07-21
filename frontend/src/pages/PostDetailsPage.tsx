@@ -31,7 +31,9 @@ import {
     ThumbsUp,
     ThumbsDown,
     Trash2,
-    Flag
+    Flag,
+    ShieldAlert,
+    EyeOff
 } from 'lucide-react';
 import {
     Dialog,
@@ -415,6 +417,23 @@ function PostDetailsPage() {
 
     // Rules verification
     const isPoster = post.posterId === user?.id || post.posterUsername === user?.username;
+
+    // Shadow banned posts are hidden from public (only visible to poster)
+    if (post.shadowBanned && !isPoster) {
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center py-24 bg-black text-white px-4">
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10 mb-4">
+                    <ImageOff className="size-8 text-white/35" />
+                </div>
+                <p className="text-lg font-semibold text-white/70">Post unavailable</p>
+                <p className="text-sm text-white/40 mt-1">This post is not available or has restricted access.</p>
+                <Button asChild className="mt-6 border-white/20 hover:bg-white hover:text-black">
+                    <Link to="/">Go Back Home</Link>
+                </Button>
+            </div>
+        );
+    }
+
     const isSettled = post.status === 'SETTLED';
     const shouldDisableForm = isPoster || isSettled || userHasSubmitted;
     const urgencyClass = getUrgencyClass(post.lockAt);
@@ -442,6 +461,59 @@ function PostDetailsPage() {
                     Back to Feed
                 </Link>
             </div>
+
+            {/* ── Flagged / Moderation Banner ── */}
+            {(post.aiModerationStatus === 'FLAGGED' || post.aiFlagReason) && (
+                <div className="w-full max-w-6xl mx-auto px-6 pt-4">
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-start gap-3.5 backdrop-blur-sm shadow-lg">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <ShieldAlert className="size-5" />
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-amber-200 leading-none">
+                                    Post Under Moderation
+                                </h3>
+                                <span className="inline-flex items-center rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                                    Flagged Content
+                                </span>
+                            </div>
+                            <p className="text-xs text-amber-200/80 leading-relaxed mt-0.5">
+                                This post was flagged by automated AI moderation as potentially offensive or inappropriate and is currently under review.
+                            </p>
+                            {post.aiFlagReason && (
+                                <div className="mt-1.5 rounded-lg bg-black/40 border border-amber-500/20 px-3 py-1.5 text-xs text-amber-300 font-mono">
+                                    <span className="font-semibold text-amber-400">Reason:</span> {post.aiFlagReason}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Shadow-Ban Banner (visible to original poster only) ── */}
+            {post.shadowBanned && isPoster && (
+                <div className="w-full max-w-6xl mx-auto px-6 pt-3">
+                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 flex items-start gap-3.5 backdrop-blur-sm shadow-lg">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                            <EyeOff className="size-5" />
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-red-200 leading-none">
+                                    Post Shadow-Banned
+                                </h3>
+                                <span className="inline-flex items-center rounded-full bg-red-500/20 border border-red-500/30 px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase tracking-wider">
+                                    Hidden from Public
+                                </span>
+                            </div>
+                            <p className="text-xs text-red-200/80 leading-relaxed mt-0.5">
+                                This post is shadow-banned. It is hidden from all public feeds and tag search results. It remains visible only to you on your account profile page and via this direct link.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Layout wrapper */}
             <main className="w-full max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

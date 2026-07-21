@@ -153,7 +153,7 @@ export function HomePage() {
         setIsLoading(true);
         try {
             const data = await getOpenPosts(p, PAGE_SIZE);
-            setPosts(data.content);
+            setPosts(data.content.filter((post) => !post.shadowBanned));
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements);
             setIsFirst(data.first);
