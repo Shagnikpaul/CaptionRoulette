@@ -14,6 +14,9 @@ import { parseApiError } from '@/api/errors';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
 interface ReportDialogProps {
   targetType: 'POST' | 'CAPTION';
   targetId: string;
@@ -29,12 +32,20 @@ export function ReportDialog({
   onOpenChange,
   onSuccess,
 }: ReportDialogProps) {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('Log in to report', { description: 'Please sign in to report content.' });
+      onOpenChange(false);
+      navigate('/login');
+      return;
+    }
     const trimmed = reason.trim();
     if (!trimmed) {
       setErrorMsg('Reason is required.');
