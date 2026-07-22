@@ -15,7 +15,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldError,
-  FieldDescription,
 } from '../ui/field';
 
 const formSchema = z.object({
