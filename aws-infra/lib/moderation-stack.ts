@@ -73,10 +73,10 @@ export class ModerationStack extends cdk.Stack {
     // Read processed images
     bucket.grantRead(moderationFn, "processed/*");
 
-    // Rekognition — DetectModerationLabels has no resource-level ARN scoping
+    // Rekognition — DetectModerationLabels + DetectText have no resource-level ARN scoping
     moderationFn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["rekognition:DetectModerationLabels"],
+        actions: ["rekognition:DetectModerationLabels", "rekognition:DetectText"],
         resources: ["*"],
       })
     );
