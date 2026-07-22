@@ -15,6 +15,7 @@ import {
   FieldGroup,
   FieldLabel,
   FieldError,
+  FieldDescription,
 } from '../ui/field';
 
 const formSchema = z.object({
@@ -53,7 +54,10 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-sm space-y-8 font-['Geist']">
-      <div className="space-y-2">
+      <div className="space-y-3">
+        <Link to="/" className="inline-block" title="Back to Home">
+          <img src="/logo.png" alt="Caption Roulette Logo" className="w-10 h-10 object-contain" />
+        </Link>
         <h1 className="text-3xl font-bold font-['Bricolage_Grotesque'] tracking-tight">Welcome Back</h1>
         <p className="text-gray-400">Sign in to your Caption Roulette account.</p>
       </div>
