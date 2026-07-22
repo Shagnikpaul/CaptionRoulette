@@ -1,4 +1,5 @@
-import { Aperture, User as UserIcon, LogOut, LogIn, Flame, Trophy } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User as UserIcon, LogOut, LogIn, Flame, Trophy } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
 import { Link, NavLink } from 'react-router-dom';
@@ -8,17 +9,41 @@ import { SearchDialog } from '../SearchDialog';
 
 export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY <= 10) {
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY.current + 5) {
+        // Scrolling down
+        setIsVisible(false);
+      } else if (currentScrollY < lastScrollY.current - 5) {
+        // Scrolling up
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <div className='sticky top-4 z-50 px-4'>
+    <div
+      className={`sticky top-4 z-50 px-4 transition-all duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0 opacity-100' : '-translate-y-24 opacity-0 pointer-events-none'
+      }`}
+    >
       <nav className="mx-auto flex items-center justify-between px-6 py-4 border border-white/10 bg-black/70 rounded-2xl backdrop-blur-md text-white">
         {/* Logo + Feed Nav */}
         <div className="flex w-full items-center gap-5">
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <Aperture className="w-6 h-6" />
-            <span className="font-bold text-lg tracking-tight font-['Bricolage_Grotesque']">
-              Caption Roulette
-            </span>
+          <Link to="/" className="flex items-center shrink-0" title="Caption Roulette">
+            <img src="/logo.png" alt="Caption Roulette" className="w-8 h-8 object-contain" />
           </Link>
 
           {/* Feed navigation icon buttons */}
