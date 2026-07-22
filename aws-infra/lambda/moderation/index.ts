@@ -1,6 +1,6 @@
 import { SQSHandler, SQSBatchResponse, SQSBatchItemFailure } from "aws-lambda";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { RekognitionClient, DetectModerationLabelsCommand } from "@aws-sdk/client-rekognition";
+import { RekognitionClient, DetectModerationLabelsCommand, DetectTextCommand } from "@aws-sdk/client-rekognition";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { Client } from "pg";
 import sharp from "sharp";
@@ -99,13 +99,40 @@ async function moderateImage(bucket: string, key: string): Promise<{ flagged: bo
 }
 
 // -------------------------------------------------------------------
+// OCR — extract text embedded in the image via Rekognition DetectText
+// -------------------------------------------------------------------
+async function detectTextInImage(bucket: string, key: string): Promise<string> {
+    const getResult = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const rawBuffer = await streamToBuffer(getResult.Body);
+
+    // Rekognition DetectText requires JPEG or PNG
+    const jpegBuffer = await sharp(rawBuffer).jpeg({ quality: 90 }).toBuffer();
+
+    const response = await rekognition.send(
+        new DetectTextCommand({
+            Image: { Bytes: new Uint8Array(jpegBuffer) },
+        })
+    );
+
+    // Only keep LINE detections (not individual WORDs) to avoid duplicates
+    const lines = (response.TextDetections ?? [])
+        .filter((d) => d.Type === "LINE" && (d.DetectedText ?? "").trim().length > 0)
+        .map((d) => d.DetectedText!.trim());
+
+    const combined = lines.join(" | ");
+    console.log(`[detectTextInImage] key=${key} detectedText="${combined}"`);
+    return combined;
+}
+
+// -------------------------------------------------------------------
 // Text moderation via Groq — structured JSON response
 // -------------------------------------------------------------------
 async function moderateText(
     title: string | null,
-    tags: string[]
+    tags: string[],
+    imageText: string = ""
 ): Promise<{ flagged: boolean; reason: string; confidence: number }> {
-    if (!title && tags.length === 0) {
+    if (!title && tags.length === 0 && !imageText) {
         return { flagged: false, reason: "No text content to moderate", confidence: 100 };
     }
 
@@ -127,6 +154,7 @@ Be conservative: if you are uncertain, lean toward flagging (safe: false) with a
 
 Title: ${title ?? "(none)"}
 Tags: ${tags.join(", ") || "(none)"}
+Text detected in image (OCR): ${imageText || "(none)"}
 
 Respond ONLY with valid JSON in this exact shape, no other text:
 {"safe": boolean, "reason": "short explanation of what was detected", "confidence": number}`;
@@ -197,10 +225,13 @@ export const handler: SQSHandler = async (event): Promise<SQSBatchResponse> => {
                 const job: ModerationJob = JSON.parse(record.body);
                 const bucket = process.env.SOURCE_BUCKET!;
 
-                const [imageResult, textResult] = await Promise.all([
+                const [imageResult, imageText] = await Promise.all([
                     moderateImage(bucket, job.processedImageKey),
-                    moderateText(job.title, job.tags),
+                    detectTextInImage(bucket, job.processedImageKey),
                 ]);
+
+                // Pass OCR-detected image text into the text moderation check
+                const textResult = await moderateText(job.title, job.tags, imageText);
 
                 const flagged = imageResult.flagged || textResult.flagged;
                 const status = flagged ? "FLAGGED" : "SAFE";

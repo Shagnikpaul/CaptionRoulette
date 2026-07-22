@@ -17,11 +17,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
-
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j // NEW — replaces the System.out.println calls
 @RequiredArgsConstructor
@@ -243,8 +244,29 @@ public class PostService {
         notificationRepository.deleteByReferencePostId(postId);
         reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.POST, postId);
 
+        deleteS3ImagesForPost(post);
+
         postRepository.delete(post);
         redisService.del(postCacheKey(postId)); 
+    }
+
+    private void deleteS3ImagesForPost(Post post) {
+        List<String> keysToDelete = Stream.of(post.getImageKey(), post.getProcessedImageKey(), post.getThumbnailKey())
+                .filter(key -> key != null && !key.isBlank())
+                .distinct()
+                .toList();
+
+        for (String key : keysToDelete) {
+            try {
+                s3Client.deleteObject(DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build());
+                log.info("Deleted S3 object key {} for post {}", key, post.getId());
+            } catch (Exception e) {
+                log.warn("Failed to delete S3 object key {} for post {}: {}", key, post.getId(), e.getMessage());
+            }
+        }
     }
 
     // ============ Mappers ============
