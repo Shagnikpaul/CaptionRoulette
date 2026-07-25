@@ -12,7 +12,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getImageUrl } from "@/api/posts";
@@ -204,16 +209,18 @@ export function EditProfileModal() {
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <ImageIcon className="size-3 text-white/40" />
-                <input
+              <InputGroup className="mt-1 h-8 bg-black/20 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50">
+                <InputGroupAddon>
+                  <ImageIcon className="size-3.5 text-white/40" />
+                </InputGroupAddon>
+                <InputGroupInput
                   type="text"
                   placeholder="Or paste image URL..."
                   value={profileImageKey || ""}
                   onChange={(e) => setProfileImageKey(e.target.value || null)}
-                  className="w-full bg-transparent text-[11px] text-white/70 placeholder:text-white/30 border-b border-white/10 focus:border-orange-400 outline-none pb-0.5"
+                  className="text-xs text-white placeholder:text-white/30"
                 />
-              </div>
+              </InputGroup>
             </div>
           </div>
 
@@ -222,18 +229,20 @@ export function EditProfileModal() {
             <Label htmlFor="edit-username" className="text-xs font-semibold text-white/70">
               Username
             </Label>
-            <div className="relative">
-              <User className="absolute left-3 top-2.5 size-4 text-white/40" />
-              <Input
+            <InputGroup className="bg-white/5 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50">
+              <InputGroupAddon>
+                <User className="size-4 text-white/40" />
+              </InputGroupAddon>
+              <InputGroupInput
                 id="edit-username"
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-orange-500"
+                className="text-white placeholder:text-white/30"
                 placeholder="Enter username"
               />
-            </div>
+            </InputGroup>
           </div>
 
           {/* Password Section */}
@@ -244,34 +253,38 @@ export function EditProfileModal() {
 
             {/* New Password */}
             <div className="flex flex-col gap-1.5">
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 size-4 text-white/40" />
-                <Input
+              <InputGroup className="bg-white/5 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50">
+                <InputGroupAddon>
+                  <Lock className="size-4 text-white/40" />
+                </InputGroupAddon>
+                <InputGroupInput
                   id="edit-new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-orange-500"
+                  className="text-white placeholder:text-white/30"
                   placeholder="New password (min 6 chars)"
                 />
-              </div>
+              </InputGroup>
             </div>
 
             {/* Confirm Password */}
             <div className="flex flex-col gap-1.5">
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 size-4 text-white/40" />
-                <Input
+              <InputGroup className={`bg-white/5 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50 ${
+                passwordMismatch ? "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/50" : ""
+              }`}>
+                <InputGroupAddon>
+                  <Lock className="size-4 text-white/40" />
+                </InputGroupAddon>
+                <InputGroupInput
                   id="edit-confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-orange-500 ${
-                    passwordMismatch ? "border-red-500 focus-visible:ring-red-500" : ""
-                  }`}
+                  className="text-white placeholder:text-white/30"
                   placeholder="Confirm new password"
                 />
-              </div>
+              </InputGroup>
               {passwordMismatch && (
                 <p className="text-[11px] text-red-400 font-medium ml-1">
                   Passwords do not match
