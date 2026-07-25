@@ -19,7 +19,12 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Label } from "@/components/ui/label";
+import {
+  Field,
+  FieldLabel,
+  FieldDescription,
+  FieldError,
+} from "@/components/ui/field";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getImageUrl } from "@/api/posts";
 import { requestPresignedUrl, uploadToS3 } from "@/api/images";
@@ -142,10 +147,9 @@ export function EditProfileModal() {
 
   return (
     <Drawer direction="right" open={isEditProfileOpen} onOpenChange={(open) => !open && closeEditProfile()}>
-      <DrawerContent className="bg-black/95 text-white border-l border-white/10 flex flex-col gap-0 overflow-hidden sm:max-w-md w-full h-full">
+      <DrawerContent className="bg-black/95 text-white border border-white/10 flex flex-col gap-0 overflow-hidden sm:max-w-md w-full rounded-3xl m-5 max-h-[calc(100vh-2.5rem)]">
         <DrawerHeader className="border-b border-white/10 pb-4 shrink-0 px-6 text-left">
-          <DrawerTitle className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            <User className="size-5 text-orange-400" />
+          <DrawerTitle className="text-lg font-medium tracking-tight text-white flex items-center gap-2">
             Edit Profile
           </DrawerTitle>
           <DrawerDescription className="text-white/60 text-xs mt-1">
@@ -165,7 +169,7 @@ export function EditProfileModal() {
             </Avatar>
 
             <div className="flex flex-col gap-2 flex-1 min-w-0">
-              <span className="text-[11px] font-semibold text-white/80">Profile Picture</span>
+              <FieldLabel className="text-[11px] font-semibold text-white/80">Profile Picture</FieldLabel>
               
               <div className="flex items-center gap-2">
                 <input
@@ -227,13 +231,13 @@ export function EditProfileModal() {
           </div>
 
           {/* Username Input */}
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="edit-username" className="text-[11px] font-semibold text-white/70">
+          <Field>
+            <FieldLabel htmlFor="edit-username" className="text-[11px] font-semibold text-white/70">
               Username
-            </Label>
+            </FieldLabel>
             <InputGroup className="h-11 bg-white/5 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50">
-              <InputGroupAddon>
-                <User className="size-4 text-white/40" />
+              <InputGroupAddon align="inline-end">
+                <User className=" text-white/40" />
               </InputGroupAddon>
               <InputGroupInput
                 id="edit-username"
@@ -245,37 +249,39 @@ export function EditProfileModal() {
                 placeholder="Enter username"
               />
             </InputGroup>
-          </div>
+          </Field>
 
           {/* Password Section */}
           <div className="flex flex-col gap-3 pt-2 border-t border-white/10">
-            <span className="text-[11px] font-semibold text-white/70">
+            <FieldLabel className="text-[11px] font-semibold text-white/70">
               Change Password <span className="text-white/40 font-normal">(optional)</span>
-            </span>
+            </FieldLabel>
 
             {/* New Password */}
-            <div className="flex flex-col gap-1.5">
+            <Field>
               <InputGroup className="h-11 bg-white/5 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50">
-                <InputGroupAddon>
-                  <Lock className="size-4 text-white/40" />
-                </InputGroupAddon>
+                
                 <InputGroupInput
                   id="edit-new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="text-[13px] text-white placeholder:text-white/30"
+                  className=" text-white placeholder:text-white/30"
                   placeholder="New password (min 6 chars)"
                 />
+                <InputGroupAddon align="inline-end">
+                  <Lock className="size-4 text-white/40" />
+                </InputGroupAddon>
+                
               </InputGroup>
-            </div>
+            </Field>
 
             {/* Confirm Password */}
-            <div className="flex flex-col gap-1.5">
+            <Field>
               <InputGroup className={`h-11 bg-white/5 border-white/10 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/50 ${
                 passwordMismatch ? "border-red-500 focus-within:border-red-500 focus-within:ring-red-500/50" : ""
               }`}>
-                <InputGroupAddon>
+                <InputGroupAddon align="inline-end">
                   <Lock className="size-4 text-white/40" />
                 </InputGroupAddon>
                 <InputGroupInput
@@ -288,16 +294,16 @@ export function EditProfileModal() {
                 />
               </InputGroup>
               {passwordMismatch && (
-                <p className="text-[11px] text-red-400 font-medium ml-1">
+                <FieldError className="text-[11px] font-medium ml-1">
                   Passwords do not match
-                </p>
+                </FieldError>
               )}
               {!passwordMismatch && newPassword && confirmPassword && (
-                <p className="text-[11px] text-emerald-400 font-medium ml-1 flex items-center gap-1">
+                <FieldDescription className="text-[11px] text-emerald-400 font-medium ml-1 flex items-center gap-1">
                   <Check className="size-3" /> Passwords match
-                </p>
+                </FieldDescription>
               )}
-            </div>
+            </Field>
           </div>
           </form>
         </div>
