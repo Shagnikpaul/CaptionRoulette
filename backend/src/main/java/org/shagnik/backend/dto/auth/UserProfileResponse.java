@@ -17,4 +17,6 @@ public class UserProfileResponse {
     private UserRole role;
     private boolean banned;
     private LocalDateTime createdAt;
+    private String profileImageKey;
 }
+

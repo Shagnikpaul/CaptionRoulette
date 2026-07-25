@@ -23,7 +23,6 @@ export const UserRole = {
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
-
 export interface UserProfileResponse {
   id: string;
   username: string;
@@ -31,6 +30,19 @@ export interface UserProfileResponse {
   role: UserRole | string;
   banned: boolean;
   createdAt: string;
+  profileImageKey?: string | null;
+}
+
+export interface UpdateProfileRequest {
+  username?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  profileImageKey?: string | null;
+}
+
+export interface UpdateProfileResponse {
+  user: UserProfileResponse;
+  accessToken?: string | null;
 }
 
 export const authApi = {
@@ -46,6 +58,11 @@ export const authApi = {
 
   getCurrentUser: async (): Promise<UserProfileResponse> => {
     const response = await client.get<UserProfileResponse>('/api/auth/me');
+    return response.data;
+  },
+
+  updateProfile: async (data: UpdateProfileRequest): Promise<UpdateProfileResponse> => {
+    const response = await client.put<UpdateProfileResponse>('/api/users/me', data);
     return response.data;
   }
 };

@@ -7,12 +7,14 @@ import {
     AlertCircle,
     Calendar,
     User,
+    UserPen,
     EyeOff,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getUserProfile, getUserPosts, type UserProfile } from "@/api/search";
 import { getImageUrl, type FeedItemResponse } from "@/api/posts";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,27 +31,56 @@ function formatJoinedDate(iso: string): string {
 
 function ProfileHeader({
     profile,
+    isOwnProfile,
+    onEditProfile,
 }: {
     profile: UserProfile;
     postCount: number;
+    isOwnProfile: boolean;
+    onEditProfile: () => void;
 }) {
-    return (
-        <div className="flex items-center gap-6 mb-8 py-4">
-            {/* Avatar — flat, no glow */}
-            <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-white/10 text-4xl font-extrabold text-white uppercase select-none">
-                {profile.username.charAt(0)}
-            </div>
+    const avatarSrc = profile.profileImage
+        ? profile.profileImage.startsWith("http")
+            ? profile.profileImage
+            : getImageUrl(profile.profileImage)
+        : undefined;
 
-            {/* Text */}
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold text-white tracking-tight">
-                    {profile.username}
-                </h1>
-                <div className="flex items-center gap-1.5 text-white/40 text-xs mt-0.5">
-                    <Calendar className="size-3" />
-                    <span>Joined {formatJoinedDate(profile.joinedAt)}</span>
+    return (
+        <div className="flex items-center justify-between gap-6 mb-8 py-4 border-b border-white/10">
+            <div className="flex items-center gap-5">
+                {/* Avatar */}
+                <Avatar className="size-20 sm:size-24 shrink-0 border-2 border-white/20 shadow-xl">
+                    <AvatarImage src={avatarSrc} alt={profile.username} />
+                    <AvatarFallback className="bg-orange-500/20 text-orange-400 text-3xl font-extrabold uppercase">
+                        {profile.username.charAt(0)}
+                    </AvatarFallback>
+                </Avatar>
+
+                {/* Text info */}
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                        {profile.username}
+                    </h1>
+                    <div className="flex items-center gap-1.5 text-white/40 text-xs mt-0.5">
+                        <Calendar className="size-3.5" />
+                        <span>Joined {formatJoinedDate(profile.joinedAt)}</span>
+                    </div>
                 </div>
             </div>
+
+            {/* Edit Profile button if visiting own profile */}
+            {isOwnProfile && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onEditProfile}
+                    className="border-white/20 text-white hover:bg-white/10 hover:text-white rounded-xl shadow-sm text-xs font-semibold gap-1.5"
+                    id="profile-edit-btn"
+                >
+                    <UserPen className="size-4 text-orange-400" />
+                    <span>Edit Profile</span>
+                </Button>
+            )}
         </div>
     );
 }
@@ -58,8 +89,8 @@ function ProfileHeader({
 
 function ProfileHeaderSkeleton() {
     return (
-        <div className="flex items-center gap-6 mb-8 py-4 animate-pulse">
-            <div className="size-24 shrink-0 rounded-full bg-white/10" />
+        <div className="flex items-center gap-6 mb-8 py-4 border-b border-white/10 animate-pulse">
+            <div className="size-20 sm:size-24 shrink-0 rounded-full bg-white/10" />
             <div className="flex flex-col gap-2">
                 <div className="h-7 w-36 rounded-lg bg-white/10" />
                 <div className="h-4 w-44 rounded bg-white/8" />
@@ -148,7 +179,7 @@ const PAGE_SIZE = 12; // 3-col grid, 4 rows
 
 export function UserProfilePage() {
     const { username = "" } = useParams<{ username: string }>();
-    const { user } = useAuth();
+    const { user, openEditProfile } = useAuth();
 
     const isOwnProfile = Boolean(
         user?.username && username && user.username.toLowerCase() === username.toLowerCase()
@@ -165,7 +196,7 @@ export function UserProfilePage() {
     const [postsLoading, setPostsLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
 
-    // Fetch profile once on mount / username change
+    // Fetch profile once on mount / username change / when user changes
     useEffect(() => {
         setProfileLoading(true);
         setNotFound(false);
@@ -179,7 +210,7 @@ export function UserProfilePage() {
                 if (status === 404) setNotFound(true);
             })
             .finally(() => setProfileLoading(false));
-    }, [username]);
+    }, [username, user]);
 
     // Fetch posts for current page
     const fetchPosts = useCallback(
@@ -256,6 +287,8 @@ export function UserProfilePage() {
                         <ProfileHeader
                             profile={profile}
                             postCount={totalElements}
+                            isOwnProfile={isOwnProfile}
+                            onEditProfile={openEditProfile}
                         />
                     )
                 )}
@@ -267,8 +300,6 @@ export function UserProfilePage() {
                         <span className="text-xs text-white/30">· {totalElements} total</span>
                     )}
                 </div>
-
-                
 
                 {/* ── 3-column grid ── */}
                 <div className="grid grid-cols-3 gap-1">

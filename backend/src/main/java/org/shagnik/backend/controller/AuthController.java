@@ -43,7 +43,8 @@ public class AuthController {
                 user.getEmail(),
                 user.getRole(),
                 user.isBanned(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getProfileImageKey()
         ));
     }
 }

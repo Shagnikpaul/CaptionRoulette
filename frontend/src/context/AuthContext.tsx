@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
-import type { LoginRequest, RegisterRequest, UserProfileResponse } from '../api/auth';
+import type { LoginRequest, RegisterRequest, UserProfileResponse, UpdateProfileRequest, UpdateProfileResponse } from '../api/auth';
 import { tokenStorage } from '../api/tokenStorage';
 
 interface AuthContextType {
@@ -8,9 +8,13 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isEditProfileOpen: boolean;
+  openEditProfile: () => void;
+  closeEditProfile: () => void;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
+  updateUserProfile: (data: UpdateProfileRequest) => Promise<UpdateProfileResponse>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -19,6 +23,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfileResponse | null>(null);
   const [token, setToken] = useState<string | null>(tokenStorage.getToken());
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
+
+  const openEditProfile = () => setIsEditProfileOpen(true);
+  const closeEditProfile = () => setIsEditProfileOpen(false);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -51,7 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: RegisterRequest) => {
     await authApi.register(data);
-    // Auto-login since register doesn't return a token anymore based on our finding
     await login({ usernameOrEmail: data.username, password: data.password });
   };
 
@@ -59,12 +66,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     tokenStorage.removeToken();
     setToken(null);
     setUser(null);
+    setIsEditProfileOpen(false);
+  };
+
+  const updateUserProfile = async (data: UpdateProfileRequest): Promise<UpdateProfileResponse> => {
+    const res = await authApi.updateProfile(data);
+    if (res.accessToken) {
+      tokenStorage.setToken(res.accessToken);
+      setToken(res.accessToken);
+    }
+    setUser(res.user);
+    return res;
   };
 
   const isAuthenticated = !!user && !!token;
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isAuthenticated,
+        isLoading,
+        isEditProfileOpen,
+        openEditProfile,
+        closeEditProfile,
+        login,
+        register,
+        logout,
+        updateUserProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
