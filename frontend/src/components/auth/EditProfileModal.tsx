@@ -4,13 +4,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { User, Lock, Upload, Image as ImageIcon, X, Check, Loader2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -140,19 +141,20 @@ export function EditProfileModal() {
     : undefined;
 
   return (
-    <Dialog open={isEditProfileOpen} onOpenChange={(open) => !open && closeEditProfile()}>
-      <DialogContent className="max-w-md bg-black/95 text-white border-white/10 backdrop-blur-xl shadow-2xl p-6">
-        <DialogHeader className="gap-1">
-          <DialogTitle className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+    <Drawer direction="right" open={isEditProfileOpen} onOpenChange={(open) => !open && closeEditProfile()}>
+      <DrawerContent className="bg-black/95 text-white border-l border-white/10 flex flex-col gap-0 overflow-hidden sm:max-w-md w-full h-full">
+        <DrawerHeader className="border-b border-white/10 pb-4 shrink-0 px-6 text-left">
+          <DrawerTitle className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
             <User className="size-5 text-orange-400" />
             Edit Profile
-          </DialogTitle>
-          <DialogDescription className="text-white/60 text-xs">
+          </DrawerTitle>
+          <DrawerDescription className="text-white/60 text-xs mt-1">
             Update your account details, profile picture, or change your password.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 my-2">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <form id="edit-profile-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Avatar Selection Section */}
           <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/[0.04] border border-white/10">
             <Avatar className="size-16 border-2 border-white/20 shadow-md shrink-0">
@@ -297,34 +299,37 @@ export function EditProfileModal() {
               )}
             </div>
           </div>
+          </form>
+        </div>
 
-          <DialogFooter className="mt-2 gap-2 sm:gap-0">
+        <DrawerFooter className="border-t border-white/10 px-6 py-4 shrink-0 flex-col sm:flex-col gap-2">
+          <Button
+            type="submit"
+            form="edit-profile-form"
+            disabled={isSubmitting || isUploading || passwordMismatch}
+            className="bg-orange-500 text-white hover:bg-orange-600 font-semibold w-full"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin mr-1.5" />
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+
+          <DrawerClose asChild>
             <Button
               type="button"
               variant="outline"
-              onClick={closeEditProfile}
-              className="border-white/20 text-white hover:bg-white/10"
+              className="border-white/20 text-white hover:bg-white/10 w-full"
             >
               Cancel
             </Button>
-
-            <Button
-              type="submit"
-              disabled={isSubmitting || isUploading || passwordMismatch}
-              className="bg-orange-500 text-white hover:bg-orange-600 font-semibold"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin mr-1.5" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }
