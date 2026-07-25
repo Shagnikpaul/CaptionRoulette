@@ -126,14 +126,15 @@ export function Navbar() {
       }`}
     >
       <nav className="mx-auto flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border border-white/10 bg-black/75 rounded-2xl backdrop-blur-md text-white max-w-5xl shadow-lg">
-        {/* Logo + Feed Nav */}
-        <div className="flex items-center gap-2 sm:gap-5 flex-1 min-w-0">
+        {/* Left side: Logo */}
+        <div className="flex items-center flex-1 min-w-0">
           <Link to="/" className="flex items-center shrink-0" title="Caption Roulette">
             <img src="/logo.png" alt="Caption Roulette" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
           </Link>
+        </div>
 
-          {/* Feed navigation icon buttons */}
-          <div className="flex items-center gap-1 sm:gap-1.5">
+        {/* Center: Feed navigation icon buttons */}
+        <div className="flex items-center justify-center gap-1 sm:gap-1.5 shrink-0">
             <NavLink
               to="/"
               end
@@ -165,10 +166,9 @@ export function Navbar() {
 
             <SearchDialog />
           </div>
-        </div>
 
         {/* Right side: user actions */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-3 flex-1 min-w-0">
           {isAuthenticated ? (
             <>
               <CreatePostDrawer />
